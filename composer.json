@@ -1,0 +1,27 @@
+{
+  "name": "wordpressistic/seoistic",
+  "description": "SEOistic — WordPress SEO toolkit",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://seoistic.wpistic.com/",
+  "authors": [
+    {
+      "name": "WordPressistic",
+      "email": "info@wpistic.com"
+    }
+  ],
+  "require": {
+    "php": ">=8.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "Wpistic\\Seoistic\\": "src/"
+    },
+    "files": [
+      "src/autoload.php"
+    ]
+  },
+  "extra": {
+    "installer-name": "seoistic"
+  }
+}
