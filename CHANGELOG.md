@@ -3,6 +3,27 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.0] - 2026-08-12
+
+### Added
+
+- WPistic-backed licensing integration and protected update support.
+- WPistic activation/validation adapter and entitlement compatibility layer.
+- `scripts/build-release.sh` — deterministic release packaging.
+
+### Changed
+
+- Unified licensing architecture to use WPistic platform by default.
+- Removed legacy GitHub Releases-based updater for licensed installations.
+
+### Security
+
+- Default license API endpoint now points to `https://api.wpistic.com`.
+
+### Release Notes
+
+- Target version for this release: `1.4.0`.
+
 ## [1.3.0] — First public release
 
 ### Added

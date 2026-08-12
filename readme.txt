@@ -4,7 +4,7 @@ Tags: seo, schema, sitemap, redirects, indexing
 Requires at least: 6.4
 Tested up to: 6.4
 Requires PHP: 8.1
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -112,7 +112,7 @@ screenshot-N.png convention before a .org submission.)
 See CHANGELOG.md in the plugin's source repository for the full history.
 Highlights for this release are below.
 
-= 1.3.0 =
+= 1.4.0 =
 * Premium admin UI redesign: application shell, command palette, dashboard
   roadmap, content inventory, and a live-analysis SEO workspace in the post
   editor.
@@ -129,7 +129,7 @@ Highlights for this release are below.
 
 == Upgrade Notice ==
 
-= 1.3.0 =
+= 1.4.0 =
 Admin UI redesign and license-security hardening. No database changes; all
 existing SEO metadata, settings, and REST integrations are preserved.
 
