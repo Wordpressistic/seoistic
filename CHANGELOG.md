@@ -3,13 +3,17 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
-## [1.4.0] - 2026-08-12
+## [1.5.2] - 2026-08-12
 
 ### Added
 
 - WPistic-backed licensing integration and protected update support.
 - WPistic activation/validation adapter and entitlement compatibility layer.
 - `scripts/build-release.sh` — deterministic release packaging.
+
+### Release
+
+- Bump version to 1.5.2 and prepare production release.
 
 ### Changed
 
