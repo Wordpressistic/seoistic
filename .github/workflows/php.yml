@@ -82,7 +82,15 @@ jobs:
         working-directory: /tmp/seoistic-wp
         run: |
           wp plugin deactivate seoistic
-          wp plugin install https://github.com/Wordpressistic/seoistic/releases/download/v1.5.2/seoistic-1.5.2.zip --force --activate
+          curl -fsSL https://github.com/Wordpressistic/seoistic/releases/download/v1.5.2/seoistic-1.5.2.zip -o /tmp/seoistic-legacy.zip
+          echo '8a3f4453ee5101c19231baf2fe736fd158a80cc3132cda4599b1964c24b768b1  /tmp/seoistic-legacy.zip' | sha256sum --check
+          # The historical public ZIP used a versioned root. Normalize only
+          # its folder name to match existing canonical installs; code unchanged.
+          mkdir /tmp/seoistic-legacy
+          unzip -q /tmp/seoistic-legacy.zip -d /tmp/seoistic-legacy
+          mv /tmp/seoistic-legacy/seoistic-1.5.2 /tmp/seoistic-legacy/seoistic
+          (cd /tmp/seoistic-legacy && zip -qr /tmp/seoistic-legacy-normalized.zip seoistic)
+          wp plugin install /tmp/seoistic-legacy-normalized.zip --force --activate
           test "$(wp plugin get seoistic --field=version)" = 1.5.2
           POST_ID=$(wp post create --post_type=page --post_title='SEO preservation test' --porcelain)
           wp post meta update "$POST_ID" _seoistic_title 'Preserved SEO title'
