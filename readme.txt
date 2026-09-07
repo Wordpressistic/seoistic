@@ -4,7 +4,7 @@ Tags: seo, schema, sitemap, redirects, indexing
 Requires at least: 6.4
 Tested up to: 6.4
 Requires PHP: 8.1
-Stable tag: 1.5.2
+Stable tag: 1.5.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -111,6 +111,13 @@ screenshot-N.png convention before a .org submission.)
 
 See CHANGELOG.md in the plugin's source repository for the full history.
 Highlights for this release are below.
+
+= 1.5.3 =
+* Use the WPistic server-assigned plan, including Free, instead of assuming
+  every valid license includes Business features.
+* Preserve explicit legacy plan mappings; unknown plans fail closed.
+* A replacement key cannot inherit another key's paid-plan cache during outages.
+* Add 32 automated entitlement regression checks to CI.
 
 = 1.5.2 =
 * Premium admin UI redesign: application shell, command palette, dashboard

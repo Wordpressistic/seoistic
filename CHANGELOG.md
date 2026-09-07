@@ -3,6 +3,24 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.3] - 2026-09-07
+
+### Fixed
+
+- Treat the server-confirmed license plan as authoritative; a valid Free key
+  no longer silently unlocks Business features. Normalize legacy starter and
+  professional slugs to Pro and Business; unknown plans resolve to Free.
+- Preserve explicit legacy product mappings only when the server omits a plan.
+- Require a paid plan for `is_pro()`. Preserve expiry, revocation and bounded
+  outage protection; do not inherit a previous key's plan after key replacement.
+- Correct activation wording and run 32 isolated licensing regressions in CI.
+
+### Deployment note
+
+Review server-assigned plans before upgrading sites that relied on the old
+Business default. Authorized complimentary access must be recorded on WPistic,
+not simulated by the plugin. No SEO metadata or database schema changes.
+
 ## [1.5.2] - 2026-08-12
 
 ### Added

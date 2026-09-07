@@ -20,18 +20,20 @@ if (! function_exists('apply_filters')) {
 if (! function_exists('get_option')) {
     function get_option($name, $default = false)
     {
-        return $default;
+        return $GLOBALS['seoistic_test_options'][$name] ?? $default;
     }
 }
 if (! function_exists('update_option')) {
     function update_option($name, $value, $autoload = true)
     {
+        $GLOBALS['seoistic_test_options'][$name] = $value;
         return true;
     }
 }
 if (! function_exists('delete_option')) {
     function delete_option($name)
     {
+        unset($GLOBALS['seoistic_test_options'][$name]);
         return true;
     }
 }
@@ -122,7 +124,7 @@ if (! function_exists('wp_json_encode')) {
 if (! function_exists('wp_remote_post')) {
     function wp_remote_post($url, $args = array())
     {
-        return array();
+        return array_shift($GLOBALS['seoistic_test_responses']) ?? array();
     }
 }
 if (! function_exists('wp_remote_get')) {
@@ -134,13 +136,13 @@ if (! function_exists('wp_remote_get')) {
 if (! function_exists('wp_remote_retrieve_body')) {
     function wp_remote_retrieve_body($response)
     {
-        return json_encode(array());
+        return json_encode($response['body'] ?? array());
     }
 }
 if (! function_exists('wp_remote_retrieve_response_code')) {
     function wp_remote_retrieve_response_code($response)
     {
-        return 200;
+        return $response['status'] ?? 200;
     }
 }
 if (! function_exists('wp_die')) {
@@ -242,3 +244,14 @@ if (! function_exists('wp_kses')) {
         return $value;
     }
 }
+
+define('DAY_IN_SECONDS', 86400);
+define('HOUR_IN_SECONDS', 3600);
+define('MINUTE_IN_SECONDS', 60);
+define('SEOISTIC_DIR', dirname(__DIR__) . '/');
+function wp_salt($scheme = 'auth') { return 'isolated-test-salt-not-a-production-secret'; }
+function untrailingslashit($value) { return rtrim($value, '/'); }
+function is_wp_error($value) { return false; }
+function absint($value) { return abs((int) $value); }
+$GLOBALS['seoistic_test_responses'] = array();
+require_once SEOISTIC_DIR . 'src/autoload.php';

@@ -94,7 +94,7 @@ final class License {
 
 	private function status_message( string $code ): string {
 		return match ( $code ) {
-			'activated'    => __( 'License activated — premium features are now unlocked.', 'seoistic' ),
+			'activated'    => __( 'License activated. Features follow the plan assigned in your WPistic account.', 'seoistic' ),
 			'deactivated'  => __( 'License deactivated.', 'seoistic' ),
 			'rate_limited' => __( 'Too many attempts. Please wait a few minutes and try again.', 'seoistic' ),
 			'network'      => __( 'Could not reach the license server. Check your site’s outbound connections and try again shortly.', 'seoistic' ),
