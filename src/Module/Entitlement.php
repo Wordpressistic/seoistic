@@ -10,7 +10,8 @@ use Wpistic\Seoistic\License\Plans;
 /**
  * Tier-aware entitlement. A premium addon unlocks only when the active license plan
  * (Free → Pro → Business → Agency) ranks at or above the addon's required plan. The
- * plan is resolved from the cached license (its Licenseistic product id → plan map).
+ * plan is resolved from the server-confirmed cached license. A product id → plan
+ * map is used only for legacy servers that do not return a plan.
  *
  * The `seoistic/entitlement` filter is the seam for the client's Licenseistic /
  * Memberistic plugins (or a same-site membership check) to override the decision.
@@ -45,10 +46,16 @@ final class Entitlement {
 			return 'free';
 		}
 
+		$meta = ( new LicenseClient() )->meta();
+		if ( array_key_exists( 'plan', $meta ) ) {
+			// Explicit Free/unknown values must never fall through to a paid map.
+			return Plans::normalize_plan( is_string( $meta['plan'] ) ? $meta['plan'] : '' );
+		}
+
 		$product = (int) get_option( 'seoistic_license_product_active', 0 );
 		$map     = get_option( 'seoistic_plan_map', array() );
 		if ( is_array( $map ) && isset( $map[ $product ] ) ) {
-			return (string) $map[ $product ];
+			return Plans::normalize_plan( is_string( $map[ $product ] ) ? $map[ $product ] : '' );
 		}
 
 		/**
@@ -57,11 +64,11 @@ final class Entitlement {
 		 * @param string $plan    Default plan.
 		 * @param int    $product Licenseistic product id.
 		 */
-		return (string) apply_filters( 'seoistic/license_plan', 'business', $product );
+		return Plans::normalize_plan( (string) apply_filters( 'seoistic/license_plan', 'free', $product ) );
 	}
 
 	public static function is_pro(): bool {
-		return self::license_valid();
+		return Plans::rank( self::plan() ) >= Plans::rank( 'pro' );
 	}
 
 	/**

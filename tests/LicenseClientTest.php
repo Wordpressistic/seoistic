@@ -6,6 +6,12 @@ use Wpistic\Seoistic\Module\Entitlement;
 
 class LicenseClientTest extends PHPUnit\Framework\TestCase
 {
+	protected function setUp(): void
+	{
+		$GLOBALS['seoistic_test_options'] = array();
+		update_option('seoistic_license_key', Wpistic\Seoistic\Core\Crypto::encrypt('synthetic-license-key', 'license'));
+		update_option('seoistic_license_last_ok', time());
+	}
 	public function testPlanFallsBackToCanonicalNames(): void
 	{
 		$this->assertSame('pro', Plans::normalize_plan('starter'));

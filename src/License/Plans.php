@@ -27,6 +27,16 @@ final class Plans {
 		return self::RANK[ $plan ] ?? 0;
 	}
 
+	/** Normalize canonical and legacy plan slugs; unknown plans fail closed. */
+	public static function normalize_plan( string $plan ): string {
+		return match ( strtolower( trim( $plan ) ) ) {
+			'pro', 'starter' => 'pro',
+			'business', 'professional' => 'business',
+			'agency', 'agency-pro' => 'agency',
+			default => 'free',
+		};
+	}
+
 	public static function addon_plan( string $addon_id ): string {
 		return self::ADDON_PLANS[ $addon_id ] ?? 'free';
 	}

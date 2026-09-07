@@ -271,6 +271,13 @@ final class LicenseClient {
 	public function activate( string $key ): array {
 		$result = $this->post( 'activate', $this->payload( $key ) );
 		if ( ! empty( $result['success'] ) ) {
+			if ( $key !== $this->key() ) {
+				// A replacement key must not inherit the previous key's paid plan
+				// or trust window when its first validation cannot reach the server.
+				foreach ( array( self::OPT_STATUS, self::OPT_EXPIRES, self::OPT_LAST_OK, self::OPT_META, 'seoistic_license_product_active' ) as $option ) {
+					delete_option( $option );
+				}
+			}
 			update_option( self::OPT_KEY, Crypto::encrypt( $key, self::CRYPTO_CONTEXT ) );
 			update_option( self::OPT_FAIL_COUNT, 0, false );
 			update_option( self::OPT_LAST_CHECK, time(), false );
