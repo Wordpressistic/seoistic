@@ -40,3 +40,55 @@ jobs:
 
     # - name: Run test suite
     #   run: composer run-script test
+
+  wordpress:
+    name: WordPress clean install and upgrade
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: wordpress
+          MARIADB_DATABASE: wordpress
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, zip, sodium, openssl, gd
+          tools: wp-cli
+          coverage: none
+      - name: Build runtime-only distribution
+        run: git archive --format=zip --prefix=seoistic/ -o /tmp/seoistic-1.5.3.zip HEAD assets lib src knowledge seoistic.php uninstall.php LICENSE readme.txt CHANGELOG.md README.md composer.json
+      - name: Install isolated WordPress
+        run: |
+          mkdir -p /tmp/seoistic-wp
+          cd /tmp/seoistic-wp
+          wp core download
+          wp config create --dbname=wordpress --dbuser=root --dbpass=wordpress --dbhost=127.0.0.1
+          wp core install --url=http://localhost --title=CI --admin_user=ci_admin --admin_password=ci-only-password --admin_email=ci@example.invalid --skip-email
+      - name: Clean install and real WordPress entitlement checks
+        working-directory: /tmp/seoistic-wp
+        run: |
+          wp plugin install /tmp/seoistic-1.5.3.zip --activate
+          test "$(wp plugin get seoistic --field=status)" = active
+          test "$(wp plugin get seoistic --field=version)" = 1.5.3
+          wp eval-file "$GITHUB_WORKSPACE/tests/wordpress-entitlements.php"
+      - name: Upgrade from public 1.5.2 preserving SEO metadata
+        working-directory: /tmp/seoistic-wp
+        run: |
+          wp plugin deactivate seoistic
+          wp plugin install https://github.com/Wordpressistic/seoistic/releases/download/v1.5.2/seoistic-1.5.2.zip --force --activate
+          test "$(wp plugin get seoistic --field=version)" = 1.5.2
+          POST_ID=$(wp post create --post_type=page --post_title='SEO preservation test' --porcelain)
+          wp post meta update "$POST_ID" _seoistic_title 'Preserved SEO title'
+          wp option update seoistic_upgrade_smoke preserved
+          wp plugin install /tmp/seoistic-1.5.3.zip --force --activate
+          test "$(wp plugin get seoistic --field=status)" = active
+          test "$(wp option get seoistic_upgrade_smoke)" = preserved
+          test "$(wp post meta get "$POST_ID" _seoistic_title)" = 'Preserved SEO title'
+          wp eval-file "$GITHUB_WORKSPACE/tests/wordpress-entitlements.php"
