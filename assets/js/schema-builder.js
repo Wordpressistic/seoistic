@@ -219,9 +219,11 @@
 				} );
 				if ( preview ) {
 					preview.hidden = 'preview' !== button.dataset.seoisticPreviewTab;
+					preview.classList.toggle( 'is-active', 'preview' === button.dataset.seoisticPreviewTab );
 				}
 				if ( issuesRoot ) {
 					issuesRoot.hidden = 'issues' !== button.dataset.seoisticPreviewTab;
+					issuesRoot.classList.toggle( 'is-active', 'issues' === button.dataset.seoisticPreviewTab );
 				}
 			} );
 		} );

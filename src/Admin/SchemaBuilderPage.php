@@ -27,7 +27,9 @@ final class SchemaBuilderPage {
 			return;
 		}
 		wp_enqueue_style( 'seoistic-admin' );
-		wp_enqueue_script( 'seoistic-schema-builder', SEOISTIC_URL . 'assets/js/schema-builder.js', array(), SEOISTIC_VERSION, true );
+		wp_enqueue_style( 'seoistic-aurora', SEOISTIC_URL . 'assets/css/aurora.css', array( 'seoistic-admin' ), SEOISTIC_VERSION );
+		wp_enqueue_script( 'seoistic-aurora', SEOISTIC_URL . 'assets/js/aurora.js', array( 'seoistic-admin' ), SEOISTIC_VERSION, true );
+		wp_enqueue_script( 'seoistic-schema-builder', SEOISTIC_URL . 'assets/js/schema-builder.js', array( 'seoistic-aurora' ), SEOISTIC_VERSION, true );
 		wp_localize_script(
 			'seoistic-schema-builder',
 			'SeoisticSchemaBuilder',
@@ -165,8 +167,8 @@ final class SchemaBuilderPage {
 				<button type="button" class="is-active" data-seoistic-preview-tab="preview"><?php echo esc_html__( 'Live preview', 'seoistic' ); ?></button>
 				<button type="button" data-seoistic-preview-tab="issues"><?php echo esc_html__( 'Issues', 'seoistic' ); ?></button>
 			</div>
-			<pre id="seoistic-schema-preview" class="seoistic-json-preview">{}</pre>
-			<div id="seoistic-schema-issues"></div>
+			<pre id="seoistic-schema-preview" class="seoistic-json-preview seoistic-preview-pane is-active">{}</pre>
+			<div id="seoistic-schema-issues" class="seoistic-preview-pane"></div>
 		</div>
 		<div class="seoistic-schema-list">
 			<h2><?php echo esc_html__( 'Saved blocks', 'seoistic' ); ?></h2>
@@ -222,10 +224,10 @@ final class SchemaBuilderPage {
 			'imported' => __( 'Schema blocks imported.', 'seoistic' ),
 		);
 		if ( isset( $messages[ $message ] ) ) {
-			printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( $messages[ $message ] ) );
+			printf( '<div class="notice notice-success is-dismissible seoistic-notice" data-aurora-toast="success" data-aurora-toast-message="%s"><p>%s</p></div>', esc_attr( $messages[ $message ] ), esc_html( $messages[ $message ] ) );
 		} elseif ( 'error' === $message || 'import-error' === $message ) {
 			$issues = isset( $_GET['issues'] ) ? json_decode( sanitize_text_field( wp_unslash( $_GET['issues'] ) ), true ) : array();
-			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Validation failed. Please correct the block and try again.', 'seoistic' ) . '</p>';
+			echo '<div class="notice notice-error is-dismissible seoistic-notice" data-aurora-toast="error" data-aurora-toast-message="' . esc_attr__( 'Validation failed. Please correct the block and try again.', 'seoistic' ) . '"><p>' . esc_html__( 'Validation failed. Please correct the block and try again.', 'seoistic' ) . '</p>';
 			if ( is_array( $issues ) && array() !== $issues ) {
 				echo '<ul>';
 				foreach ( $issues as $issue ) {

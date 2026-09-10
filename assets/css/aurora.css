@@ -1,0 +1,237 @@
+/**
+ * Aurora design layer for SEOistic.
+ *
+ * Load after admin.css. It establishes the 1.6 token system and animation
+ * primitives while retaining the existing markup as a compatibility contract.
+ */
+
+.seoistic-app,
+.seoistic-page,
+.seoistic-panel,
+.seoistic-sidebar-score,
+.seoistic-cmdk,
+.seoistic-toasts,
+.seoistic-modal-overlay {
+	--aurora-brand: #9472ff;
+	--aurora-brand-strong: #7854f5;
+	--aurora-brand-soft: rgba(148, 114, 255, .12);
+	--aurora-brand-border: rgba(148, 114, 255, .36);
+	--aurora-ink: #0a0f1f;
+	--aurora-radius-xs: 6px;
+	--aurora-radius-sm: 10px;
+	--aurora-radius-md: 14px;
+	--aurora-radius-lg: 20px;
+	--aurora-radius-xl: 28px;
+	--aurora-radius-pill: 999px;
+	--aurora-space-1: 4px;
+	--aurora-space-2: 8px;
+	--aurora-space-3: 12px;
+	--aurora-space-4: 16px;
+	--aurora-space-5: 24px;
+	--aurora-space-6: 32px;
+	--aurora-space-7: 40px;
+	--aurora-space-8: 56px;
+	--aurora-motion-1: 120ms;
+	--aurora-motion-2: 200ms;
+	--aurora-motion-3: 280ms;
+	--aurora-motion-4: 380ms;
+	--aurora-ease: cubic-bezier(.2, .8, .2, 1);
+	--aurora-shadow-xs: 0 1px 2px rgba(10, 15, 31, .07);
+	--aurora-shadow-sm: 0 2px 8px rgba(10, 15, 31, .08);
+	--aurora-shadow-md: 0 10px 28px rgba(10, 15, 31, .10);
+	--aurora-shadow-lg: 0 20px 48px rgba(10, 15, 31, .16);
+	--aurora-shadow-brand: 0 12px 32px rgba(148, 114, 255, .24);
+	--aurora-gradient: linear-gradient(135deg, #9472ff 0%, #6f7ff5 52%, #38bdf8 100%);
+}
+
+.seoistic-app {
+	--seo-primary: var(--aurora-brand);
+	--seo-primary-strong: var(--aurora-brand-strong);
+	--seo-primary-soft: var(--aurora-brand-soft);
+	--seo-ai: var(--aurora-brand);
+	--seo-ai-gradient: var(--aurora-gradient);
+	--seo-radius-card: var(--aurora-radius-lg);
+	--seo-radius-control: var(--aurora-radius-md);
+	--seo-radius-sm: var(--aurora-radius-sm);
+	--seo-shadow-sm: var(--aurora-shadow-sm);
+	--seo-shadow-md: var(--aurora-shadow-md);
+	--seo-shadow-lg: var(--aurora-shadow-lg);
+}
+
+body.admin-color-light .seoistic-app {
+	--aurora-brand: #7854f5;
+	--aurora-brand-strong: #6541e8;
+}
+
+body.admin-color-blue .seoistic-app { --aurora-brand: #72aee6; --aurora-brand-strong: #5897c7; }
+body.admin-color-coffee .seoistic-app { --aurora-brand: #c7a589; --aurora-brand-strong: #ad8b6f; }
+body.admin-color-ectoplasm .seoistic-app { --aurora-brand: #a7aaad; --aurora-brand-strong: #8e9196; }
+body.admin-color-midnight .seoistic-app { --aurora-brand: #edbf49; --aurora-brand-strong: #d4a831; }
+body.admin-color-modern .seoistic-app { --aurora-brand: #3858e9; --aurora-brand-strong: #2c46ca; }
+body.admin-color-ocean .seoistic-app { --aurora-brand: #6eb1e1; --aurora-brand-strong: #5596c7; }
+body.admin-color-sunrise .seoistic-app { --aurora-brand: #cf6751; --aurora-brand-strong: #b65643; }
+
+/* Follow the WP admin color scheme's dark-mode signal where themes provide it. */
+body.wp-admin[data-admin-theme="dark"] .seoistic-app,
+body.wp-admin[data-admin-theme] .seoistic-admin-scheme-dark .seoistic-app,
+.seoistic-admin-scheme-dark .seoistic-app {
+	--aurora-ink: #f5f7ff;
+	--seo-bg: #0a0f1f;
+	--seo-surface: #111827;
+	--seo-surface-hover: #182238;
+	--seo-surface-selected: rgba(148, 114, 255, .16);
+	--seo-border: rgba(148, 163, 184, .22);
+	--seo-border-strong: rgba(148, 163, 184, .38);
+	--seo-text: #f5f7ff;
+	--seo-text-body: #d6dcf0;
+	--seo-text-muted: #9ca8c7;
+	--aurora-brand-soft: rgba(148, 114, 255, .18);
+	--aurora-shadow-xs: 0 1px 2px rgba(0, 0, 0, .35);
+	--aurora-shadow-sm: 0 2px 10px rgba(0, 0, 0, .34);
+	--aurora-shadow-md: 0 10px 32px rgba(0, 0, 0, .38);
+	--aurora-shadow-lg: 0 20px 54px rgba(0, 0, 0, .48);
+}
+
+.seoistic-app .seoistic-sidebar-logo {
+	background: var(--aurora-gradient);
+	box-shadow: var(--aurora-shadow-brand);
+}
+
+.seoistic-app .seoistic-nav-link.is-active {
+	background: linear-gradient(90deg, rgba(148, 114, 255, .20), rgba(148, 114, 255, .04));
+	box-shadow: inset 3px 0 0 var(--aurora-brand);
+}
+
+.seoistic-app .seoistic-hero,
+.seoistic-app .seoistic-card,
+.seoistic-app .seoistic-tool-card,
+.seoistic-app .seoistic-table-wrap {
+	box-shadow: var(--aurora-shadow-xs);
+	transition: border-color var(--aurora-motion-2) var(--aurora-ease), box-shadow var(--aurora-motion-3) var(--aurora-ease), transform var(--aurora-motion-3) var(--aurora-ease);
+}
+
+.seoistic-app .seoistic-hero {
+	background: linear-gradient(135deg, color-mix(in srgb, var(--seo-surface) 94%, var(--aurora-brand)) 0%, var(--seo-surface) 58%);
+	border-color: var(--aurora-brand-border);
+	box-shadow: var(--aurora-shadow-sm);
+}
+
+.seoistic-app .seoistic-card:hover,
+.seoistic-app .seoistic-tool-card:hover {
+	border-color: var(--aurora-brand-border);
+	box-shadow: var(--aurora-shadow-md);
+	transform: translateY(-2px);
+}
+
+.seoistic-app .seoistic-btn-primary,
+.seoistic-app .seoistic-btn-gold {
+	background: var(--aurora-gradient);
+	border-color: transparent;
+	box-shadow: 0 8px 22px rgba(148, 114, 255, .20);
+}
+
+.seoistic-app .seoistic-btn-primary:hover,
+.seoistic-app .seoistic-btn-gold:hover { filter: brightness(1.04); box-shadow: var(--aurora-shadow-brand); }
+
+/* Animated score ring */
+.seoistic-ring { --ring-offset: 0; }
+.seoistic-ring .seoistic-ring-fill {
+	transition: stroke-dashoffset var(--aurora-motion-4) var(--aurora-ease), stroke var(--aurora-motion-2) linear;
+}
+.seoistic-ring .seoistic-ring-label { font-variant-numeric: tabular-nums; }
+.seoistic-ring.is-animating { animation: aurora-ring-pop var(--aurora-motion-3) var(--aurora-ease); }
+.seoistic-ring .aurora-score-old {
+	position: absolute; right: 50%; transform: translateX(50%); bottom: -2px;
+	font-size: 10px; line-height: 1; color: var(--seo-text-muted); opacity: 0;
+	transition: opacity var(--aurora-motion-2) linear, transform var(--aurora-motion-3) var(--aurora-ease);
+}
+.seoistic-ring.is-lg .aurora-score-old { bottom: 16px; font-size: 11px; }
+.seoistic-ring.is-animating .aurora-score-old { opacity: 1; transform: translateX(50%) translateY(14px); }
+
+/* Workflow tracker */
+.aurora-tracker {
+	display: none; margin: var(--aurora-space-2) 0 var(--aurora-space-3);
+	padding: var(--aurora-space-3); border: 1px solid var(--seo-border); border-radius: var(--aurora-radius-md);
+	background: color-mix(in srgb, var(--seo-surface) 92%, var(--aurora-brand));
+}
+.aurora-tracker.is-active { display: block; animation: aurora-fade-in var(--aurora-motion-2) var(--aurora-ease); }
+.aurora-tracker-steps { display: flex; align-items: center; gap: var(--aurora-space-2); margin-bottom: var(--aurora-space-3); }
+.aurora-step { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 3px 9px; border-radius: var(--aurora-radius-pill); border: 1px solid var(--seo-border); background: var(--seo-surface); color: var(--seo-text-muted); font-size: 11px; font-weight: 650; }
+.aurora-step .dashicons { width: 13px; height: 13px; font-size: 13px; }
+.aurora-step.is-active { border-color: var(--aurora-brand); color: var(--seo-text); background: var(--aurora-brand-soft); }
+.aurora-step.is-done { border-color: transparent; background: var(--seo-success-soft); color: var(--seo-score-excellent); }
+.aurora-step-detail { margin: 0 0 var(--aurora-space-2); color: var(--seo-text-body); font-size: 12px; }
+.aurora-mini-progress { height: 7px; overflow: hidden; border-radius: var(--aurora-radius-pill); background: var(--seo-surface-hover); }
+.aurora-mini-progress-bar { width: 0; height: 100%; border-radius: inherit; background: var(--aurora-gradient); transition: width var(--aurora-motion-3) var(--aurora-ease); }
+.aurora-tracker-summary { display: none; margin-top: var(--aurora-space-2); font-size: 12px; font-weight: 650; color: var(--seo-text); }
+.aurora-tracker.is-done .aurora-tracker-summary { display: block; }
+
+/* Generic skeleton and async panel states */
+.aurora-skeleton-card { display: grid; gap: var(--aurora-space-2); padding: var(--aurora-space-4); border: 1px solid var(--seo-border); border-radius: var(--aurora-radius-md); background: var(--seo-surface); }
+.aurora-skeleton-line { height: 12px; border-radius: var(--aurora-radius-pill); background: linear-gradient(90deg, var(--seo-surface-hover) 25%, var(--seo-border) 45%, var(--seo-surface-hover) 65%); background-size: 250% 100%; animation: aurora-shimmer 1.2s linear infinite; }
+.aurora-skeleton-line:first-child { width: 42%; }
+.aurora-skeleton-line:last-child { width: 74%; }
+.aurora-skeleton-line.is-heading { height: 20px; width: 65%; }
+.aurora-skeleton-card[hidden] { display: none; }
+.seoistic-panel[data-aurora-loading="true"] > :not(.aurora-skeleton-card),
+.seoistic-tool-card[data-aurora-loading="true"] > :not(.aurora-tracker):not(.aurora-skeleton-card) { opacity: .45; pointer-events: none; }
+
+/* Audit checklist stagger */
+.seoistic-audit-item { opacity: 0; transform: translateY(8px); }
+.seoistic-audit-item.is-aurora-visible { opacity: 1; transform: none; transition: opacity var(--aurora-motion-3) var(--aurora-ease), transform var(--aurora-motion-3) var(--aurora-ease); }
+.seoistic-audit-item:nth-child(1-of-type).is-aurora-visible { transition-delay: 0ms; }
+.seoistic-audit-item:nth-child(2-of-type).is-aurora-visible { transition-delay: 40ms; }
+.seoistic-audit-item:nth-child(3-of-type).is-aurora-visible { transition-delay: 80ms; }
+.seoistic-audit-item:nth-child(4-of-type).is-aurora-visible { transition-delay: 120ms; }
+.seoistic-audit-item:nth-child(5-of-type).is-aurora-visible { transition-delay: 160ms; }
+.seoistic-audit-item:nth-child(n+6).is-aurora-visible { transition-delay: 200ms; }
+
+/* Onboarding checklist */
+.aurora-onboarding {
+	margin: 0 0 var(--aurora-space-5); padding: var(--aurora-space-4);
+	border: 1px solid var(--aurora-brand-border); border-radius: var(--aurora-radius-lg);
+	background: linear-gradient(135deg, var(--aurora-brand-soft), var(--seo-surface) 72%); box-shadow: var(--aurora-shadow-sm);
+}
+.aurora-onboarding-head { display: flex; align-items: center; justify-content: space-between; gap: var(--aurora-space-3); flex-wrap: wrap; }
+.aurora-onboarding-title { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--seo-text); font-size: 15px; }
+.aurora-onboarding-title .dashicons { color: var(--aurora-brand); }
+.aurora-onboarding-list { display: grid; gap: var(--aurora-space-2); margin: var(--aurora-space-3) 0 0; padding: 0; list-style: none; }
+.aurora-onboarding-item { display: flex; align-items: center; justify-content: space-between; gap: var(--aurora-space-3); padding: 10px 12px; border: 1px solid var(--seo-border); border-radius: var(--aurora-radius-md); background: var(--seo-surface); }
+.aurora-onboarding-label { display: flex; align-items: center; gap: 10px; color: var(--seo-text); font-size: 13px; }
+.aurora-onboarding-label .dashicons { color: var(--seo-text-muted); }
+.aurora-check { position: relative; flex: 0 0 auto; width: 22px; height: 22px; border: 2px solid var(--seo-border-strong); border-radius: var(--aurora-radius-pill); background: var(--seo-surface); }
+.aurora-check::after { content: ""; position: absolute; inset: 4px 5px 6px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) scale(0); opacity: 0; transition: transform var(--aurora-motion-2) var(--aurora-ease), opacity var(--aurora-motion-1) linear; }
+.aurora-onboarding-item.is-complete { border-color: rgba(16, 185, 129, .42); }
+.aurora-onboarding-item.is-complete .aurora-check { border-color: var(--seo-score-excellent); background: var(--seo-score-excellent); }
+.aurora-onboarding-item.is-complete .aurora-check::after { opacity: 1; transform: rotate(-45deg) scale(1); }
+.aurora-onboarding-item.is-complete .aurora-onboarding-label { color: var(--seo-text-muted); text-decoration: line-through; }
+
+/* Smooth panel tabs */
+.seoistic-panel-pane { display: none; }
+.seoistic-panel-pane.is-active { display: block; animation: aurora-fade-in var(--aurora-motion-2) var(--aurora-ease); }
+.seoistic-preview-pane { display: none; }
+.seoistic-preview-pane.is-active { display: block; animation: aurora-fade-in var(--aurora-motion-2) var(--aurora-ease); }
+
+@keyframes aurora-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes aurora-ring-pop { 0% { transform: scale(.97); } 55% { transform: scale(1.015); } 100% { transform: none; } }
+@keyframes aurora-shimmer { to { background-position: -250% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+	.seoistic-app *,
+	.seoistic-app *::before,
+	.seoistic-app *::after,
+	.seoistic-panel *,
+	.seoistic-toasts *,
+	.seoistic-modal-overlay * {
+		animation: none !important;
+		transition: none !important;
+		scroll-behavior: auto !important;
+		transform: none !important;
+	}
+	.seoistic-audit-item,
+	.seoistic-audit-item.is-aurora-visible { opacity: 1 !important; }
+	.seoistic-ring.is-animating,
+	.seoistic-app .seoistic-card:hover,
+	.seoistic-app .seoistic-tool-card:hover { transform: none !important; }
+	.aurora-skeleton-line { animation: none !important; }
+}

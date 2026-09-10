@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Wpistic\Seoistic\Addon;
 
+use Wpistic\Seoistic\Admin\RankTrackerPage;
+use Wpistic\Seoistic\RankTracker\RankTrackerService;
 use Wpistic\Seoistic\Module\AbstractModule;
 
 final class RankTrackerModule extends AbstractModule {
@@ -25,10 +27,17 @@ final class RankTrackerModule extends AbstractModule {
 	}
 
 	public function status(): string {
-		return 'coming_soon';
+		return 'active';
 	}
 
 	public function defaultEnabled(): bool {
 		return false;
+	}
+
+	public function register(): void {
+		( new RankTrackerService() )->register();
+		if ( is_admin() ) {
+			( new RankTrackerPage() )->register();
+		}
 	}
 }

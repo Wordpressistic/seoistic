@@ -208,6 +208,7 @@ final class License {
 				$result = $this->client->activate( $key );
 				$code   = ! empty( $result['success'] ) ? 'activated' : ( '' !== ( $result['code'] ?? '' ) ? (string) $result['code'] : 'failed' );
 				$detail = (string) ( $result['message'] ?? '' );
+				do_action( 'seoistic/license_event', $code );
 			}
 		} elseif ( 'deactivate' === $action ) {
 			$this->client->deactivate();

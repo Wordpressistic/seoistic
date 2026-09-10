@@ -82,7 +82,6 @@ final class AiToolsPage {
 		echo '<div class="seoistic-tool-card">';
 		echo '<div class="seoistic-tool-head"><div class="seoistic-card-icon"><span class="dashicons dashicons-' . esc_attr( $icon ) . '"></span></div><strong>' . esc_html( $title ) . '</strong></div>';
 		echo '<p>' . esc_html( $desc ) . '</p>';
-		echo '<div class="seoistic-tool-progress"><div class="seoistic-tool-progress-bar"></div></div>';
 		echo '<button type="button" title="' . esc_attr( sprintf( _n( '%d credit per page', '%d credits per page', $credits, 'seoistic' ), $credits ) ) . '" class="seoistic-btn seoistic-btn-primary" data-seoistic-bulk="' . esc_attr( $tool ) . '" ' . disabled( $this->ai_ready(), false, false ) . '><span class="dashicons dashicons-superhero"></span> ' . esc_html__( 'Run', 'seoistic' ) . '</button>';
 		echo '<div class="seoistic-tool-result"></div>';
 		echo '</div>';

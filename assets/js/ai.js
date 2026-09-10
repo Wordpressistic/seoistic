@@ -312,17 +312,12 @@
 		}
 		var ring = wrap.querySelector( '.seoistic-ring' );
 		if ( ring ) {
-			var fill = ring.querySelector( '.seoistic-ring-fill' );
-			if ( fill ) {
-				var radius = parseFloat( fill.getAttribute( 'r' ) ) || 22;
-				var circumference = 2 * Math.PI * radius;
-				fill.style.strokeDashoffset = String( circumference * ( 1 - score / 100 ) );
-			}
 			ring.classList.remove( 'is-good', 'is-warn', 'is-bad', 'is-excellent' );
 			ring.classList.add( ringTone( score ) );
-			var label = ring.querySelector( '.seoistic-ring-label' );
-			if ( label ) {
-				label.textContent = String( score );
+			if ( window.auroraAnimateScore ) {
+				window.auroraAnimateScore( ring, score, {
+					from: parseInt( ring.getAttribute( 'data-aurora-score' ), 10 ) || 0
+				} );
 			}
 		}
 		var band = document.getElementById( 'seoistic-score-band' );

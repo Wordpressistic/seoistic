@@ -67,6 +67,9 @@
 		box.style.display = 'block';
 		box.className = 'seoistic-tool-result ' + ( success ? 'is-success' : 'is-error' );
 		box.textContent = message;
+		if ( window.seoisticToast ) {
+			window.seoisticToast( message, success ? 'success' : 'error' );
+		}
 	}
 
 	/* ---------------------------------------------------------------- */
@@ -84,28 +87,35 @@
 				return;
 			}
 
-			var progressWrap = document.getElementById( 'seoistic-indexistic-progress' );
-			var progressBar = progressWrap ? progressWrap.querySelector( '.seoistic-tool-progress-bar' ) : null;
+			var card = btn.closest( '.seoistic-tool-card' );
+			var tracker = window.auroraTracker && card ? window.auroraTracker( card, {
+				queued: 'Queued',
+				progress: 'Submitting',
+				done: 'Done',
+				queuedMessage: 'Preparing URLs…'
+			} ) : null;
 			btn.disabled = true;
-			if ( progressWrap ) {
-				progressWrap.style.display = 'block';
-			}
-			if ( progressBar ) {
-				progressBar.style.width = '40%';
+			if ( tracker ) {
+				tracker.start();
+				tracker.state( 'progress' );
+				tracker.progress( 1, urls.length, 'Item 1 / ' + urls.length );
 			}
 
 			ajaxPost( 'seoistic_indexistic_console_submit', { engine: selectedEngine(), urls: urls } )
 				.then( function ( json ) {
-					if ( progressBar ) {
-						progressBar.style.width = '100%';
-					}
 					var message = json && json.data && json.data.message
 						? json.data.message
 						: ( json && json.success ? 'Done.' : 'Submission failed.' );
 					showResult( Boolean( json && json.success ), message );
+					if ( tracker ) {
+						tracker.finish( message );
+					}
 				} )
 				.catch( function () {
 					showResult( false, 'Submission failed.' );
+					if ( tracker ) {
+						tracker.fail( 'Submission failed.' );
+					}
 				} )
 				.finally( function () {
 					btn.disabled = false;
