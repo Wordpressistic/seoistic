@@ -3,6 +3,55 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.6.0 "Aurora"] - 2026-09-11
+
+The biggest release in SEOistic history: all four premium addons go live, AI moves to the WPistic AI backend with a monthly AI Credits system, Google Search Console connection gets a real recovery flow, and the entire admin gets the animated Aurora design system.
+
+### Added — Addons
+
+- **AI Search Visibility (AEO)** (Business): llms.txt studio (visual builder + live preview + one-click apply), AI-crawler analytics (GPTBot, ClaudeBot, PerplexityBot, Google-Extended, CCBot — visits trend + most-crawled content), AI-scored AEO content audits (answer-first structure, FAQ presence, entity coverage, heading clarity, freshness) with fix suggestions, and a guided citation-readiness checklist. First-mover feature: be visible in AI answers, not just Google.
+- **Rank Tracker & Reports** (Business): keyword tracking with daily position checks (scheduled, lock-protected), position history with sparklines and movement badges, locale/device filters, Search Console import mode (labeled delayed data), white-label HTML reports with print-to-PDF and scheduled weekly email.
+- **Schema Pro / Custom Builder** (Pro): visual schema block builder (Article, FAQPage, HowTo, Product, LocalBusiness, Event, Review, Course, Recipe, TravelAgency, SoftwareApplication + custom JSON mode), dynamic field mapping with post variables, live JSON-LD preview, validator-gated saves (invalid JSON is never stored), conditional display rules (post type / taxonomy / template / URL pattern), JSON export/import. New table `seoistic_schema_blocks`.
+- **Performance & Core Web Vitals** (Pro): PageSpeed Insights through the WPistic proxy (no Google keys needed), weekly metric history (LCP / CLS / INP) with trend arrows, threshold email alerts, and a Quick Wins panel (lazy-load, hero preload, render-blocking removal) with confirm + dry-run before every change.
+
+### Added — AI Credits system (WPistic AI backend)
+
+- New `Core\AI\WpisticAiClient`: every AI feature now runs on the WPistic AI gateway (ai.wpistic.com) — no API keys, no provider accounts, nothing to configure. License-holders just use the features.
+- Monthly AI Credits per plan (Free 30 · Pro 500 · Business 1,500 · Agency 5,000), reset monthly. Live credits widget on Dashboard, AI Tools and the editor with usage history.
+- Credit costs: title/description/keywords 1 · image-alt batch 1 per 10 · content optimize 3 · full-page optimize 5 · schema generate 2 · AEO audit 10. Identical requests within 10 minutes are cached and cost 0.
+- Friendly upgrade card with credits remaining when the balance runs out (HTTP 402 contract), automatic retry with backoff on rate limits (429).
+- **Custom AI model** (Business/Agency): bring your own OpenAI-compatible model (base URL + key + model, encrypted at rest). Unmetered — your key, your cost.
+
+### Added — Business Automator (Business)
+
+- Recipe engine: trigger (schedule / content saved / license event) -> audit -> AI draft fix -> approval queue -> apply -> notify. Mutating steps are approval-gated by default with per-recipe auto-apply opt-in, fully audited.
+- Run history with per-step status and diff preview before anything is applied.
+- Five starter recipes: weekly audit + report, new-post SEO polish, freshness monitor, schema reminder, llms.txt refresh.
+
+### Added — Aurora UI
+
+- New design system (aurora.css/js): modern cards, adaptive light/dark following the WP admin scheme, brand accent.
+- Animated score rings with count-up numbers, old-to-new score transitions on re-audit.
+- Workflow animations: bulk tools show step-trackers (queued -> item N/M -> done summary), staggered checklist reveals, skeleton loaders, toast notifications.
+- Accessibility: every animation respects `prefers-reduced-motion` (content appears instantly); motion budget 400ms.
+- Onboarding checklist card on the dashboard (connect license -> run first audit -> set titles) with live checkmarks.
+
+### Fixed
+
+- **Google Search Console 403 access_denied**: dedicated recovery card when Google rejects the connection — exact OAuth testing-mode steps (add your account as Test User), publish guidance, copy-able redirect URI, Search Console property match check against the site URL, and a force re-connect that clears stale tokens. Refresh tokens now rotate; 401 responses trigger automatic refresh before any user-facing error.
+- Header handling hardening for LiteSpeed/Hostinger environments shared across WPistic plugins.
+
+### Changed
+
+- Local provider options (Ollama / OpenRouter / Groq pickers) are no longer offered to Free/Pro users — the WPistic AI backend replaces them. Existing stored settings are left in place but unused.
+- Legacy `AiGateway` / `AutomatorClient` / `ScriptTemplates` removed in favor of the new client and recipe engine.
+- Database schema version 1.4.0 (adds `seoistic_schema_blocks`, `seoistic_keywords`, `seoistic_positions`; idempotent upgrade).
+
+### Upgrade notes
+
+- Requires WordPress 6.4+ and PHP 8.1+. All settings and meta are preserved; the database upgrade runs automatically on activation.
+- Premium addons require an active license (Pro or Business by addon); without one they show an upgrade card and never fatal.
+
 ## [1.5.3] - 2026-09-07
 
 ### Fixed
