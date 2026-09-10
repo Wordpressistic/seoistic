@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace Wpistic\Seoistic\Admin;
 
 use Wpistic\Seoistic\AI\AiSettings;
+use Wpistic\Seoistic\Core\AI\WpisticAiClient;
 
 /**
- * SEOISTIC → Settings → AI. Renders as a tab inside Admin::settings(). Every
- * API key field is a blank password input — submitting it blank keeps the
- * existing (encrypted) key; the saved key is never echoed back into the page.
- * Provider-specific fields (OpenRouter/Groq keys, Ollama base URL) are all
- * rendered together and toggled client-side by the provider dropdown.
+ * SEOISTIC → Settings → AI. Uses managed WPistic AI credits; Business and
+ * Agency can optionally configure an encrypted custom-model endpoint.
  */
 final class AiSettingsPage {
 
@@ -23,8 +21,7 @@ final class AiSettingsPage {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
-		$s        = AiSettings::all();
-		$provider = AiSettings::provider();
+		$s = AiSettings::all();
 		?>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="seoistic_save_ai_settings">
@@ -36,96 +33,31 @@ final class AiSettingsPage {
 					<td><label><input type="checkbox" name="enabled" value="1" <?php checked( $s['enabled'] ); ?>> <?php esc_html_e( 'Enable AI generators and buttons', 'seoistic' ); ?></label></td>
 				</tr>
 				<tr>
-					<th><label for="seoistic_ai_provider"><?php esc_html_e( 'AI Provider', 'seoistic' ); ?></label></th>
-					<td>
-						<select id="seoistic_ai_provider" name="provider" data-seoistic-provider-select>
-							<?php foreach ( AiSettings::PROVIDERS as $value => $label ) : ?>
-								<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $provider, $value ); ?>><?php echo esc_html( $label ); ?></option>
-							<?php endforeach; ?>
-						</select>
-						<p class="description"><?php esc_html_e( 'OpenRouter and Groq both offer free-tier models and need an API key. Ollama is a self-hosted model server on your own network/VPS — free, private, and no key required.', 'seoistic' ); ?></p>
-					</td>
-				</tr>
-			</table>
+					<th><?php esc_html_e( 'WPistic AI', 'seoistic' ); ?></th>
+					<td><p class="description"><strong><?php esc_html_e( 'No provider API keys needed.', 'seoistic' ); ?></strong> <?php esc_html_e( 'Generation uses your license and monthly AI credits. A cached repeat request costs 0 credits.', 'seoistic' ); ?></p></td>
+				</tr></table>
 
-			<div data-seoistic-provider-panel="openrouter">
+			<?php if ( AiSettings::custom_models_allowed() ) : ?>
+				<h2><?php esc_html_e( 'Custom AI Model (Business perk)', 'seoistic' ); ?></h2>
 				<table class="form-table">
 					<tr>
-						<th><label for="seoistic_ai_openrouter_key"><?php esc_html_e( 'OpenRouter API Key', 'seoistic' ); ?></label></th>
-						<td>
-							<input type="password" id="seoistic_ai_openrouter_key" name="openrouter_api_key" class="regular-text" autocomplete="off" placeholder="<?php echo AiSettings::has_api_key( 'openrouter' ) ? esc_attr( AiSettings::masked_key( 'openrouter' ) ) : 'sk-or-…'; ?>">
-							<?php if ( AiSettings::has_api_key( 'openrouter' ) ) : ?>
-								<p class="description">
-									<?php esc_html_e( 'A key is already saved and encrypted. Leave blank to keep it, or enter a new one to replace it.', 'seoistic' ); ?>
-									<label style="margin-left:8px;"><input type="checkbox" name="clear_openrouter_key" value="1"> <?php esc_html_e( 'Remove saved key', 'seoistic' ); ?></label>
-								</p>
-							<?php else : ?>
-								<p class="description"><?php esc_html_e( 'Get a free key at openrouter.ai — many models have a free tier. Stored encrypted; never sent to the browser.', 'seoistic' ); ?></p>
-							<?php endif; ?>
-						</td>
+						<th><label for="seoistic_ai_custom_base_url"><?php esc_html_e( 'OpenAI-compatible base URL', 'seoistic' ); ?></label></th>
+						<td><input type="url" id="seoistic_ai_custom_base_url" name="custom_base_url" value="<?php echo esc_attr( (string) $s['custom_base_url'] ); ?>" class="regular-text" placeholder="https://api.example.com/v1">
+						<p class="description"><?php esc_html_e( 'Example: https://api.example.com/v1. Requests use /chat/completions and are unmetered with your own API key.', 'seoistic' ); ?></p></td>
 					</tr>
 					<tr>
-						<th><label for="seoistic_ai_model_openrouter"><?php esc_html_e( 'OpenRouter Model', 'seoistic' ); ?></label></th>
-						<td>
-							<select id="seoistic_ai_model_openrouter" name="model_openrouter">
-								<?php foreach ( AiSettings::OPENROUTER_MODELS as $value => $label ) : ?>
-									<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $s['model_openrouter'], $value ); ?>><?php echo esc_html( $label ); ?></option>
-								<?php endforeach; ?>
-							</select>
-						</td>
+						<th><label for="seoistic_ai_custom_key"><?php esc_html_e( 'API key', 'seoistic' ); ?></label></th>
+						<td><input type="password" id="seoistic_ai_custom_key" name="custom_api_key" class="regular-text" autocomplete="new-password" placeholder="<?php echo AiSettings::has_api_key( 'custom' ) ? esc_attr( AiSettings::masked_key( 'custom' ) ) : 'sk-…'; ?>">
+						<?php if ( AiSettings::has_api_key( 'custom' ) ) : ?><p class="description"><label><input type="checkbox" name="clear_custom_key" value="1"> <?php esc_html_e( 'Remove the saved encrypted key', 'seoistic' ); ?></label></p><?php endif; ?></td>
+					</tr>
+					<tr>
+						<th><label for="seoistic_ai_custom_model"><?php esc_html_e( 'Model', 'seoistic' ); ?></label></th>
+						<td><input type="text" id="seoistic_ai_custom_model" name="custom_model" value="<?php echo esc_attr( (string) $s['custom_model'] ); ?>" class="regular-text" placeholder="gpt-4o-mini"></td>
 					</tr>
 				</table>
-			</div>
+				<?php endif; ?>
 
-			<div data-seoistic-provider-panel="groq">
 				<table class="form-table">
-					<tr>
-						<th><label for="seoistic_ai_groq_key"><?php esc_html_e( 'Groq API Key', 'seoistic' ); ?></label></th>
-						<td>
-							<input type="password" id="seoistic_ai_groq_key" name="groq_api_key" class="regular-text" autocomplete="off" placeholder="<?php echo AiSettings::has_api_key( 'groq' ) ? esc_attr( AiSettings::masked_key( 'groq' ) ) : 'gsk_…'; ?>">
-							<?php if ( AiSettings::has_api_key( 'groq' ) ) : ?>
-								<p class="description">
-									<?php esc_html_e( 'A key is already saved and encrypted. Leave blank to keep it, or enter a new one to replace it.', 'seoistic' ); ?>
-									<label style="margin-left:8px;"><input type="checkbox" name="clear_groq_key" value="1"> <?php esc_html_e( 'Remove saved key', 'seoistic' ); ?></label>
-								</p>
-							<?php else : ?>
-								<p class="description"><?php esc_html_e( 'Get a free key at console.groq.com — fast inference, generous free rate limits. Stored encrypted; never sent to the browser.', 'seoistic' ); ?></p>
-							<?php endif; ?>
-						</td>
-					</tr>
-					<tr>
-						<th><label for="seoistic_ai_model_groq"><?php esc_html_e( 'Groq Model', 'seoistic' ); ?></label></th>
-						<td>
-							<select id="seoistic_ai_model_groq" name="model_groq">
-								<?php foreach ( AiSettings::GROQ_MODELS as $value => $label ) : ?>
-									<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $s['model_groq'], $value ); ?>><?php echo esc_html( $label ); ?></option>
-								<?php endforeach; ?>
-							</select>
-						</td>
-					</tr>
-				</table>
-			</div>
-
-			<div data-seoistic-provider-panel="ollama">
-				<table class="form-table">
-					<tr>
-						<th><label for="seoistic_ai_ollama_base_url"><?php esc_html_e( 'Ollama Base URL', 'seoistic' ); ?></label></th>
-						<td>
-							<input type="url" id="seoistic_ai_ollama_base_url" name="ollama_base_url" value="<?php echo esc_attr( (string) $s['ollama_base_url'] ); ?>" class="regular-text" placeholder="http://127.0.0.1:11434">
-							<p class="description"><?php esc_html_e( 'The address of your Ollama server — e.g. http://127.0.0.1:11434 if it runs on this same server, or your VPS\'s address/port if it runs elsewhere on a private network. No API key needed.', 'seoistic' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th><label for="seoistic_ai_ollama_model"><?php esc_html_e( 'Ollama Model', 'seoistic' ); ?></label></th>
-						<td>
-							<input type="text" id="seoistic_ai_ollama_model" name="ollama_model" value="<?php echo esc_attr( (string) $s['ollama_model'] ); ?>" class="regular-text" placeholder="llama3.1">
-							<p class="description"><?php esc_html_e( 'The exact model name as it appears in `ollama list` on your server (e.g. llama3.1, qwen2.5, mistral).', 'seoistic' ); ?></p>
-						</td>
-					</tr>
-				</table>
-			</div>
-
-			<table class="form-table">
 				<tr>
 					<th><label for="seoistic_ai_temperature"><?php esc_html_e( 'Temperature', 'seoistic' ); ?></label></th>
 					<td><input type="number" id="seoistic_ai_temperature" step="0.1" min="0" max="2" name="temperature" value="<?php echo esc_attr( (string) $s['temperature'] ); ?>" class="small-text"></td>
@@ -168,19 +100,6 @@ final class AiSettingsPage {
 			</div>
 			<?php submit_button( __( 'Save AI settings', 'seoistic' ) ); ?>
 		</form>
-		<script>
-		( function () {
-			var select = document.querySelector( '[data-seoistic-provider-select]' );
-			if ( ! select ) { return; }
-			function sync() {
-				document.querySelectorAll( '[data-seoistic-provider-panel]' ).forEach( function ( panel ) {
-					panel.style.display = panel.getAttribute( 'data-seoistic-provider-panel' ) === select.value ? '' : 'none';
-				} );
-			}
-			select.addEventListener( 'change', sync );
-			sync();
-		} )();
-		</script>
 		<?php
 	}
 
@@ -192,11 +111,6 @@ final class AiSettingsPage {
 		AiSettings::save(
 			array(
 				'enabled'          => isset( $_POST['enabled'] ),
-				'provider'         => sanitize_key( wp_unslash( $_POST['provider'] ?? '' ) ),
-				'model_openrouter' => sanitize_text_field( wp_unslash( $_POST['model_openrouter'] ?? '' ) ),
-				'model_groq'       => sanitize_text_field( wp_unslash( $_POST['model_groq'] ?? '' ) ),
-				'ollama_base_url'  => esc_url_raw( wp_unslash( $_POST['ollama_base_url'] ?? '' ) ),
-				'ollama_model'     => sanitize_text_field( wp_unslash( $_POST['ollama_model'] ?? '' ) ),
 				'temperature'      => (float) ( $_POST['temperature'] ?? 0.4 ),
 				'max_tokens'       => (int) ( $_POST['max_tokens'] ?? 900 ),
 				'business_name'    => sanitize_text_field( wp_unslash( $_POST['business_name'] ?? '' ) ),
@@ -205,15 +119,21 @@ final class AiSettingsPage {
 				'target_audience'  => sanitize_text_field( wp_unslash( $_POST['target_audience'] ?? '' ) ),
 				'default_language' => sanitize_text_field( wp_unslash( $_POST['default_language'] ?? 'en' ) ),
 				'kb_mode'          => sanitize_key( wp_unslash( $_POST['kb_mode'] ?? 'balanced' ) ),
+				'custom_base_url'  => AiSettings::custom_models_allowed() ? esc_url_raw( wp_unslash( $_POST['custom_base_url'] ?? '' ) ) : '',
+				'custom_model'     => AiSettings::custom_models_allowed() ? sanitize_text_field( wp_unslash( $_POST['custom_model'] ?? '' ) ) : '',
 			)
 		);
 
-		foreach ( array( 'openrouter', 'groq' ) as $provider ) {
-			if ( ! empty( $_POST[ 'clear_' . $provider . '_key' ] ) ) {
-				AiSettings::clear_api_key( $provider );
-			} elseif ( ! empty( $_POST[ $provider . '_api_key' ] ) ) {
-				AiSettings::set_api_key( $provider, sanitize_text_field( wp_unslash( $_POST[ $provider . '_api_key' ] ) ) );
+		if ( AiSettings::custom_models_allowed() ) {
+			if ( ! empty( $_POST['clear_custom_key'] ) ) {
+				AiSettings::clear_api_key( 'custom' );
+			} elseif ( ! empty( $_POST['custom_api_key'] ) ) {
+				AiSettings::set_api_key( 'custom', sanitize_text_field( wp_unslash( $_POST['custom_api_key'] ) ) );
 			}
+		}
+
+		if ( AiSettings::custom_models_allowed() ) {
+			WpisticAiClient::clear_caches();
 		}
 
 		wp_safe_redirect( add_query_arg( 'updated', '1', admin_url( 'admin.php?page=seoistic-settings&tab=ai' ) ) );

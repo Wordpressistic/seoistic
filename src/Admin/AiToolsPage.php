@@ -6,7 +6,6 @@ namespace Wpistic\Seoistic\Admin;
 
 use Wpistic\Seoistic\AI\AiSettings;
 use Wpistic\Seoistic\Core\Sitemaps;
-use Wpistic\Seoistic\Module\Entitlement;
 
 /**
  * SEOISTIC → AI Tools. Animated generator cards for robots.txt, .htaccess, llms.txt,
@@ -35,7 +34,7 @@ final class AiToolsPage {
 	}
 
 	private function ai_ready(): bool {
-		return Entitlement::can( 'ai', 'premium' ) && AiSettings::is_enabled() && AiSettings::is_configured();
+		return AiSettings::is_enabled() && AiSettings::is_gateway_ready();
 	}
 
 	public function render(): void {
@@ -45,10 +44,12 @@ final class AiToolsPage {
 
 		View::header( 'seoistic-ai-tools', __( 'AI Tools', 'seoistic' ), __( 'Generate robots.txt, .htaccess rules, llms.txt, schema, bulk meta, alt text, internal-link and AI-visibility reports. Every result is previewed before anything is applied.', 'seoistic' ) );
 
+		AiCreditsWidget::render();
+
 		if ( ! $this->ai_ready() ) {
-			$reason = ! Entitlement::can( 'ai', 'premium' )
-				? __( 'SEOISTIC AI is a Pro feature.', 'seoistic' )
-				: __( 'Add an OpenRouter API key and enable AI features.', 'seoistic' );
+			$reason = AiSettings::is_gateway_ready()
+				? __( 'Enable AI features in SEOistic settings.', 'seoistic' )
+				: __( 'Connect your SEOistic license to use AI credits.', 'seoistic' );
 			echo '<div class="seoistic-modal-warning">' . esc_html( $reason ) . ' <a href="' . esc_url( admin_url( 'admin.php?page=seoistic-settings&tab=ai' ) ) . '">' . esc_html__( 'Open AI settings', 'seoistic' ) . '</a></div>';
 		}
 
@@ -58,10 +59,10 @@ final class AiToolsPage {
 		$this->generator_card( 'media-text', __( 'llms.txt Generator', 'seoistic' ), __( 'A structured summary of your site for AI assistants (ChatGPT, Perplexity, Gemini).', 'seoistic' ), 'llms' );
 		$this->sitemap_card();
 		$this->schema_info_card();
-		$this->bulk_card( 'index-card', __( 'Meta Bulk Generator', 'seoistic' ), __( 'Fills in SEO title, description and focus keyword for every published post missing them.', 'seoistic' ), 'bulk-meta' );
-		$this->bulk_card( 'format-image', __( 'Image Alt Generator', 'seoistic' ), __( 'Generates alt text for media library images that don\'t have any yet.', 'seoistic' ), 'bulk-alt' );
-		$this->bulk_card( 'admin-links', __( 'Internal Link Builder', 'seoistic' ), __( 'Advisory report: internal-linking opportunities for your lowest-scoring pages.', 'seoistic' ), 'bulk-internal-links' );
-		$this->bulk_card( 'visibility', __( 'AI Search Visibility Analyzer', 'seoistic' ), __( 'Advisory report: AEO recommendations for your lowest-scoring pages.', 'seoistic' ), 'bulk-aeo' );
+		$this->bulk_card( 'index-card', __( 'Meta Bulk Generator', 'seoistic' ), __( 'Fills in SEO title, description and focus keyword for every published post missing them.', 'seoistic' ), 'bulk-meta', 5 );
+		$this->bulk_card( 'format-image', __( 'Image Alt Generator', 'seoistic' ), __( 'Generates alt text for media library images that don\'t have any yet.', 'seoistic' ), 'bulk-alt', 1 );
+		$this->bulk_card( 'admin-links', __( 'Internal Link Builder', 'seoistic' ), __( 'Advisory report: internal-linking opportunities for your lowest-scoring pages.', 'seoistic' ), 'bulk-internal-links', 1 );
+		$this->bulk_card( 'visibility', __( 'AI Search Visibility Analyzer', 'seoistic' ), __( 'Advisory report: AEO recommendations for your lowest-scoring pages.', 'seoistic' ), 'bulk-aeo', 10 );
 		$this->audit_report_card();
 		echo '</div>';
 
@@ -69,20 +70,20 @@ final class AiToolsPage {
 		View::footer();
 	}
 
-	private function generator_card( string $icon, string $title, string $desc, string $type ): void {
+	private function generator_card( string $icon, string $title, string $desc, string $type, int $credits = 0 ): void {
 		echo '<div class="seoistic-tool-card">';
 		echo '<div class="seoistic-tool-head"><div class="seoistic-card-icon"><span class="dashicons dashicons-' . esc_attr( $icon ) . '"></span></div><strong>' . esc_html( $title ) . '</strong></div>';
 		echo '<p>' . esc_html( $desc ) . '</p>';
-		echo '<button type="button" class="seoistic-btn seoistic-btn-primary" data-seoistic-generate="' . esc_attr( $type ) . '" ' . disabled( $this->ai_ready(), false, false ) . '><span class="dashicons dashicons-superhero"></span> ' . esc_html__( 'Generate', 'seoistic' ) . '</button>';
+		echo '<button type="button" title="' . esc_attr( sprintf( _n( '%d credit', '%d credits', $credits, 'seoistic' ), $credits ) ) . '" class="seoistic-btn seoistic-btn-primary" data-seoistic-generate="' . esc_attr( $type ) . '" ' . disabled( $this->ai_ready(), false, false ) . '><span class="dashicons dashicons-superhero"></span> ' . esc_html__( 'Generate', 'seoistic' ) . '</button>';
 		echo '</div>';
 	}
 
-	private function bulk_card( string $icon, string $title, string $desc, string $tool ): void {
+	private function bulk_card( string $icon, string $title, string $desc, string $tool, int $credits = 0 ): void {
 		echo '<div class="seoistic-tool-card">';
 		echo '<div class="seoistic-tool-head"><div class="seoistic-card-icon"><span class="dashicons dashicons-' . esc_attr( $icon ) . '"></span></div><strong>' . esc_html( $title ) . '</strong></div>';
 		echo '<p>' . esc_html( $desc ) . '</p>';
 		echo '<div class="seoistic-tool-progress"><div class="seoistic-tool-progress-bar"></div></div>';
-		echo '<button type="button" class="seoistic-btn seoistic-btn-primary" data-seoistic-bulk="' . esc_attr( $tool ) . '" ' . disabled( $this->ai_ready(), false, false ) . '><span class="dashicons dashicons-superhero"></span> ' . esc_html__( 'Run', 'seoistic' ) . '</button>';
+		echo '<button type="button" title="' . esc_attr( sprintf( _n( '%d credit per page', '%d credits per page', $credits, 'seoistic' ), $credits ) ) . '" class="seoistic-btn seoistic-btn-primary" data-seoistic-bulk="' . esc_attr( $tool ) . '" ' . disabled( $this->ai_ready(), false, false ) . '><span class="dashicons dashicons-superhero"></span> ' . esc_html__( 'Run', 'seoistic' ) . '</button>';
 		echo '<div class="seoistic-tool-result"></div>';
 		echo '</div>';
 	}

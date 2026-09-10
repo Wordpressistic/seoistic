@@ -659,6 +659,24 @@ body[data-seoistic-theme="dark"] .seoistic-modal-overlay {
 .seoistic-table-wrap table.widefat th { background: var(--seo-bg); color: var(--seo-text-muted); }
 .seoistic-table-wrap table.widefat td { color: var(--seo-text-body); }
 
+.seoistic-schema-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr); gap: var(--seo-space-5); align-items: start; }
+.seoistic-schema-editor, .seoistic-schema-rules, .seoistic-schema-preview, .seoistic-schema-list { background: var(--seo-surface); border: 1px solid var(--seo-border); border-radius: var(--seo-radius-card); padding: var(--seo-space-5); box-shadow: var(--seo-shadow-sm); margin-bottom: var(--seo-space-4); }
+.seoistic-schema-fields { display: grid; gap: var(--seo-space-4); }
+.seoistic-schema-rules h2, .seoistic-schema-list h2 { margin: 0 0 var(--seo-space-4); }
+.seoistic-schema-rules label, .seoistic-schema-item { color: var(--seo-text-body); }
+.seoistic-schema-rules .seoistic-field label { display: inline-flex; align-items: center; gap: 6px; margin-right: 10px; }
+.seoistic-schema-badge { display: inline-block; margin-left: 6px; padding: 2px 6px; border-radius: 999px; background: var(--seo-danger-soft); color: var(--seo-danger); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.seoistic-json-preview { min-height: 260px; max-height: 420px; overflow: auto; padding: 12px; border: 1px solid var(--seo-border); border-radius: var(--seo-radius-sm); background: var(--seo-bg); color: var(--seo-text-body); font-size: 12px; white-space: pre-wrap; }
+.seoistic-schema-issues { color: var(--seo-text-body); }
+.seoistic-schema-issues.has-issues { color: var(--seo-danger); }
+.seoistic-schema-item { border-bottom: 1px solid var(--seo-border); padding: 12px 0; }
+.seoistic-schema-item h3 { margin: 0 0 4px; color: var(--seo-text); }
+.seoistic-schema-item p { margin: 0 0 8px; color: var(--seo-text-muted); }
+.seoistic-schema-item form { display: inline-block; margin-left: 6px; }
+.seoistic-import-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.seoistic-variable-select { max-width: 240px; margin-bottom: var(--seo-space-4); }
+@media (max-width: 1100px) { .seoistic-schema-layout { grid-template-columns: 1fr; } }
+
 /* License page */
 .seoistic-license-card {
 	background: var(--seo-surface); border: 1px solid var(--seo-border); border-radius: var(--seo-radius-card);
@@ -1026,3 +1044,25 @@ body.rtl .seoistic-toasts { right: auto; left: 24px; }
 	}
 	.seoistic-card { opacity: 1; transform: none; }
 }
+.seoistic-ai-credits { background: var(--seo-surface); border: 1px solid var(--seo-border); border-radius: var(--seo-radius-card); padding: var(--seo-space-5); margin: 0 0 var(--seo-space-5); box-shadow: var(--seo-shadow-sm); }
+.seoistic-ai-credits-head { display: flex; align-items: center; gap: 8px; color: var(--seo-text); margin-bottom: 10px; }
+.seoistic-ai-credits-left { margin: 0 0 4px; color: var(--seo-text); font-size: 14px; }
+.seoistic-ai-credits-left strong { font-variant-numeric: tabular-nums; }
+.seoistic-ai-credits-mode { margin: 0; color: var(--seo-text-muted); font-size: 12.5px; }
+.seoistic-ai-usage { border-top: 1px solid var(--seo-border); margin-top: 14px; padding-top: 10px; }
+.seoistic-ai-usage h3 { margin: 0 0 8px; font-size: 13px; color: var(--seo-text); }
+.seoistic-ai-usage p { margin: 0; color: var(--seo-text-muted); font-size: 12.5px; }
+.seoistic-ai-usage ul { margin: 0; max-height: 240px; overflow: auto; }
+.seoistic-ai-usage li { display: grid; grid-template-columns: minmax(90px, 1fr) auto; gap: 4px 10px; padding: 8px 0; border-bottom: 1px solid var(--seo-border); font-size: 12.5px; color: var(--seo-text-body); }
+.seoistic-ai-usage li:last-child { border-bottom: none; }
+.seoistic-ai-usage time { grid-column: 1 / -1; color: var(--seo-text-muted); font-size: 12px; }
+.seoistic-ai-upgrade-card { background: var(--seo-primary-soft); border: 1px solid var(--seo-primary); border-radius: var(--seo-radius-card); padding: 14px 16px; color: var(--seo-text); font-size: 13px; }
+.seoistic-ai-upgrade-card a { font-weight: 650; }
+
+/* Search Console recovery + connection health */
+.seoistic-gsc-recovery { border-color: var(--seo-danger); }
+.seoistic-gsc-recovery-steps { margin: 0 0 0 20px; display: grid; gap: var(--seo-space-4); }
+.seoistic-gsc-recovery-steps li { color: var(--seo-text-body); }
+.seoistic-copy-value { min-width: min(420px, 100%); margin-top: 6px; vertical-align: middle; }
+.seoistic-gsc-health { margin-bottom: var(--seo-space-4); }
+.seoistic-gsc-health .seoistic-tool-result { margin-top: var(--seo-space-3); }

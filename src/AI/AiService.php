@@ -4,40 +4,53 @@ declare(strict_types=1);
 
 namespace Wpistic\Seoistic\AI;
 
+use Wpistic\Seoistic\Core\AI\WpisticAiClient;
 use Wpistic\Seoistic\Core\PostSeo;
 
 /**
- * Orchestrates a single AI generation: builds the page context, asks the
- * configured provider via AiGateway, and parses the model's JSON reply.
- * Callers (RestController) own capability/nonce checks and deciding what to
- * do with the result — this class never writes to the database.
+ * Builds page context, routes every generation through WpisticAiClient, and
+ * parses the model's JSON reply without writing to the database.
  */
 final class AiService {
 
-	private AiGateway $client;
+	private WpisticAiClient $client;
 
-	public function __construct( ?AiGateway $client = null ) {
-		$this->client = $client ?? new AiGateway();
+	public function __construct( ?WpisticAiClient $client = null ) {
+		$this->client = $client ?? new WpisticAiClient();
 	}
 
 	/**
 	 * @param array<string, mixed> $page
-	 * @return array{success:bool, data?:array<string,mixed>, error?:string}
+	 * @return array{success:bool, data?:array<string,mixed>, error?:string, error_data?:array<string,mixed>, usage?:array<string,mixed>, cached?:bool}
 	 */
 	public function generate( string $type, array $page ): array {
-		$messages = PromptBuilder::build( $type, $page );
-		$result   = $this->client->chat( $messages );
+		$task   = self::task( $type );
+		$result = $this->client->generate( $task, $page );
 
-		if ( ! $result['success'] ) {
-			return array( 'success' => false, 'error' => $result['error'] );
+		if ( is_wp_error( $result ) ) {
+			return array(
+				'success'    => false,
+				'error'      => $result->get_error_message(),
+				'error_code' => $result->get_error_code(),
+				'error_data' => (array) $result->get_error_data(),
+			);
 		}
 
-		$data = $this->parse_json( $result['content'] );
+		$data = $this->parse_json( (string) $result['data'] );
 		if ( null === $data ) {
 			return array( 'success' => false, 'error' => __( 'AI returned a response that was not valid JSON.', 'seoistic' ) );
 		}
 
-		return array( 'success' => true, 'data' => $data );
+		$result['data'] = $data;
+		return $result;
+	}
+
+	public static function task( string $type ): string {
+		return match ( $type ) {
+			'full_page_optimization' => 'full_optimize',
+			'aeo' => 'aeo_audit',
+			default => $type,
+		};
 	}
 
 	/**

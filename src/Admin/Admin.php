@@ -7,6 +7,7 @@ namespace Wpistic\Seoistic\Admin;
 use Wpistic\Seoistic\Core\DashboardMetrics;
 use Wpistic\Seoistic\Core\Links;
 use Wpistic\Seoistic\Core\Scorer;
+use Wpistic\Seoistic\Core\Performance\PerformanceService;
 use Wpistic\Seoistic\License\LicenseClient;
 use Wpistic\Seoistic\License\Plans;
 use Wpistic\Seoistic\Module\Entitlement;
@@ -116,6 +117,7 @@ final class Admin {
 						'undo'          => __( 'Undo', 'seoistic' ),
 						'aiSuggestion'  => __( 'AI suggestion', 'seoistic' ),
 						'aiFailed'      => __( 'AI request failed.', 'seoistic' ),
+						'upgrade'       => __( 'Upgrade plan', 'seoistic' ),
 						'empty'         => __( '(empty)', 'seoistic' ),
 						'priorityFixes' => __( 'Priority fixes', 'seoistic' ),
 						'passedChecks'  => __( 'Passed checks', 'seoistic' ),
@@ -156,6 +158,7 @@ final class Admin {
 		$prev_score   = count( $history ) >= 2 ? (int) $history[ count( $history ) - 2 ]['score'] : null;
 
 		View::header( 'seoistic', __( 'Dashboard', 'seoistic' ) );
+		AiCreditsWidget::render();
 		?>
 		<section class="seoistic-hero" aria-label="<?php esc_attr_e( 'SEO health overview', 'seoistic' ); ?>">
 			<div class="seoistic-hero-score">
@@ -238,7 +241,14 @@ final class Admin {
 			View::card( 'welcome-widgets-menus', $metrics['schema_enabled'] ? __( 'Enabled', 'seoistic' ) : __( 'Disabled', 'seoistic' ), __( 'Schema Markup', 'seoistic' ), $metrics['schema_enabled'] ? 'good' : 'bad' );
 			View::card( 'networking', $metrics['sitemap_enabled'] ? __( 'Live', 'seoistic' ) : __( 'Disabled', 'seoistic' ), __( 'XML Sitemap', 'seoistic' ), $metrics['sitemap_enabled'] ? 'good' : 'bad' );
 			View::card( 'superhero', $metrics['ai_configured'] ? __( 'Configured', 'seoistic' ) : ( $metrics['ai_enabled'] ? __( 'Key missing', 'seoistic' ) : __( 'Off', 'seoistic' ) ), __( 'AI Optimization', 'seoistic' ), $metrics['ai_configured'] ? 'good' : 'warn' );
-			View::card( 'performance', __( 'Premium', 'seoistic' ), __( 'Core Web Vitals', 'seoistic' ), 'neutral', __( 'Upgrade to unlock', 'seoistic' ), 'premium' );
+			$performance_module = $this->registry->all()['performance'] ?? null;
+			$cwv_available = $performance_module && 'active' === $performance_module->status() && Entitlement::can( $performance_module->id(), $performance_module->tier() ) && $this->registry->is_enabled( $performance_module );
+			if ( $cwv_available ) {
+				$cwv = PerformanceService::dashboard_cards();
+				View::card( 'performance', null === $cwv['lcp']['value'] ? __( 'Not checked', 'seoistic' ) : PerformanceService::format_metric( 'lcp', $cwv['lcp']['value'] ), __( 'Core Web Vitals — LCP', 'seoistic' ), $cwv['lcp']['tone'], null === $cwv['lcp']['change'] ? __( 'No weekly trend', 'seoistic' ) : sprintf( '%+.1f%%', $cwv['lcp']['change'] ), null === $cwv['lcp']['change'] ? 'neutral' : ( $cwv['lcp']['change'] < 0 ? 'good' : 'bad' ) );
+			} else {
+				View::card( 'performance', __( 'Premium', 'seoistic' ), __( 'Core Web Vitals', 'seoistic' ), 'neutral', __( 'Upgrade to unlock', 'seoistic' ), 'premium' );
+			}
 			?>
 		</div>
 		<?php

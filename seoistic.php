@@ -23,7 +23,7 @@ if (! defined('ABSPATH')) {
 }
 
 define('SEOISTIC_VERSION', '1.5.3');
-define('SEOISTIC_DB_VERSION', '1.2.0');
+define('SEOISTIC_DB_VERSION', '1.3.0');
 define('SEOISTIC_FILE', __FILE__);
 define('SEOISTIC_DIR', plugin_dir_path(__FILE__));
 define('SEOISTIC_URL', plugin_dir_url(__FILE__));

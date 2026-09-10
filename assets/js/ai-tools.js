@@ -158,7 +158,8 @@
 			} )
 			.catch( function ( err ) {
 				btn.disabled = false;
-				showResult( resultBox, false, err.message || 'Failed.' );
+				var friendly = window.seoisticAiError ? window.seoisticAiError( err ).message : ( err.message || 'Failed.' );
+				showResult( resultBox, false, friendly );
 			} );
 	}
 

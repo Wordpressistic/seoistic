@@ -104,7 +104,7 @@ final class SeoMetabox {
 		$schema   = PostSeo::schema_type( $id );
 		$crumb    = PostSeo::breadcrumb_title( $id );
 		$permalink = get_permalink( $post ) ?: home_url( '/' );
-		$ai_ready = AiSettings::is_enabled() && AiSettings::is_configured();
+		$ai_ready = AiSettings::is_enabled() && AiSettings::is_gateway_ready();
 
 		$score  = PostSeo::score( $id );
 		$result = $score < 0 ? Scorer::score( $post ) : array( 'score' => $score, 'checks' => PostSeo::audit_report( $id ) );
@@ -170,16 +170,16 @@ final class SeoMetabox {
 
 		$this->field_text( 'seoistic_title', __( 'SEO title', 'seoistic' ), $title, array(
 			'min' => 10, 'max' => 60, 'placeholder' => $post->post_title,
-			'ai'  => array( 'action' => 'generate_title', 'label' => __( 'Improve', 'seoistic' ) ),
+			'ai'  => array( 'action' => 'generate_title', 'label' => __( 'Improve', 'seoistic' ), 'credits' => 1 ),
 		) );
 
 		$this->field_textarea( 'seoistic_description', __( 'Meta description', 'seoistic' ), $desc, array(
 			'min' => 140, 'max' => 160, 'rows' => 3,
-			'ai'  => array( 'action' => 'generate_description', 'label' => __( 'Improve', 'seoistic' ) ),
+			'ai'  => array( 'action' => 'generate_description', 'label' => __( 'Improve', 'seoistic' ), 'credits' => 1 ),
 		) );
 
 		$this->field_text( 'seoistic_focus_keyword', __( 'Focus keyword', 'seoistic' ), $keyword, array(
-			'ai' => array( 'action' => 'generate_keywords', 'label' => __( 'Suggest', 'seoistic' ) ),
+			'ai' => array( 'action' => 'generate_keywords', 'label' => __( 'Suggest', 'seoistic' ), 'credits' => 1 ),
 		) );
 
 		$this->field_text( 'seoistic_canonical', __( 'Canonical URL', 'seoistic' ), $canonical, array( 'type' => 'url', 'placeholder' => $permalink ) );
@@ -251,7 +251,7 @@ final class SeoMetabox {
 		$this->field_textarea( 'seoistic_og_description', __( 'OpenGraph description', 'seoistic' ), $og_desc, array( 'min' => 120, 'max' => 160, 'rows' => 2 ) );
 		$this->field_text( 'seoistic_og_image', __( 'Share image URL', 'seoistic' ), $og_image, array(
 			'type' => 'url',
-			'ai'   => array( 'action' => 'generate_alt', 'label' => __( 'Get AI Alt Text', 'seoistic' ) ),
+			'ai'   => array( 'action' => 'generate_alt', 'label' => __( 'Get AI Alt Text', 'seoistic' ), 'credits' => 1 ),
 		) );
 
 		echo '</div>';
@@ -261,7 +261,7 @@ final class SeoMetabox {
 		echo '<div class="seoistic-panel-pane" data-seoistic-pane="schema">';
 		echo '<div class="seoistic-field">';
 		echo '<div class="seoistic-field-head"><label class="seoistic-field-label" for="seoistic_schema_type">' . esc_html__( 'Schema type', 'seoistic' ) . '</label>';
-		$this->ai_button( 'generate_schema', __( 'Get AI Help', 'seoistic' ) );
+		$this->ai_button( 'generate_schema', __( 'Get AI Help', 'seoistic' ), array( 'credits' => 2 ) );
 		echo '</div>';
 		echo '<select name="seoistic_schema_type" id="seoistic_schema_type">';
 		foreach ( self::SCHEMA_TYPES as $value => $label ) {
@@ -367,26 +367,27 @@ final class SeoMetabox {
 
 	private function pane_ai( bool $ai_ready ): void {
 		echo '<div class="seoistic-panel-pane" data-seoistic-pane="ai">';
+		AiCreditsWidget::render();
 		if ( ! $ai_ready ) {
-			echo '<p class="description">' . esc_html__( 'Add an OpenRouter API key under SEOISTIC → Settings → AI to enable these actions.', 'seoistic' ) . ' <a href="' . esc_url( admin_url( 'admin.php?page=seoistic-settings&tab=ai' ) ) . '">' . esc_html__( 'Open AI settings', 'seoistic' ) . '</a></p>';
+			echo '<p class="description">' . esc_html__( 'Connect your SEOistic license and enable AI under SEOISTIC → Settings → AI.', 'seoistic' ) . ' <a href="' . esc_url( admin_url( 'admin.php?page=seoistic-settings&tab=ai' ) ) . '">' . esc_html__( 'Open AI settings', 'seoistic' ) . '</a></p>';
 		}
 
 		echo '<div class="seoistic-ai-action-grid">';
-		$this->ai_action_card( 'admin-comments', __( 'Improve Content', 'seoistic' ), __( 'Concrete, specific suggestions to strengthen this page.', 'seoistic' ), 'optimize_content' );
+		$this->ai_action_card( 'admin-comments', __( 'Improve Content', 'seoistic' ), __( 'Concrete, specific suggestions to strengthen this page.', 'seoistic' ), 'optimize_content', false, 3 );
 		$this->ai_action_card( 'admin-links', __( 'Internal Link Suggestions', 'seoistic' ), __( 'Where to link this page to related content.', 'seoistic' ), 'internal_links' );
-		$this->ai_action_card( 'superhero', __( 'Full Page Optimization', 'seoistic' ), __( 'Title, description and focus keywords in one pass.', 'seoistic' ), 'full_page_optimization', true );
+		$this->ai_action_card( 'superhero', __( 'Full Page Optimization', 'seoistic' ), __( 'Title, description and focus keywords in one pass.', 'seoistic' ), 'full_page_optimization', true, 5 );
 		echo '</div>';
 
 		echo '<div id="seoistic-ai-result" class="seoistic-tool-result"></div>';
 		echo '</div>';
 	}
 
-	private function ai_action_card( string $icon, string $title, string $desc, string $action, bool $primary = false ): void {
+	private function ai_action_card( string $icon, string $title, string $desc, string $action, bool $primary = false, int $credits = 0 ): void {
 		echo '<div class="seoistic-ai-action-card">';
 		echo '<div class="seoistic-card-icon"><span class="dashicons dashicons-' . esc_attr( $icon ) . '"></span></div>';
 		echo '<strong>' . esc_html( $title ) . '</strong>';
 		echo '<p>' . esc_html( $desc ) . '</p>';
-		$this->ai_button( $action, $primary ? __( 'Optimize with AI', 'seoistic' ) : __( 'Get AI Help', 'seoistic' ), array( 'primary' => $primary ) );
+		$this->ai_button( $action, $primary ? __( 'Optimize with AI', 'seoistic' ) : __( 'Get AI Help', 'seoistic' ), array( 'primary' => $primary, 'credits' => $credits ) );
 		echo '</div>';
 	}
 
@@ -404,6 +405,11 @@ final class SeoMetabox {
 			$class .= ' seoistic-ai-btn-sm';
 		}
 
+		$credits = (int) ( $opts['credits'] ?? 0 );
+		$title = $credits > 0
+			? sprintf( _n( '%1$s (1 credit)', '%1$s (%2$d credits)', $credits, 'seoistic' ), $label, $credits )
+			: $label;
+
 		// A "fix" button only ever carries data-seoistic-ai-fix — ai.js switches to
 		// the AI tab and clicks the *actual* action button there. Giving it its own
 		// data-seoistic-ai-action too would make both handlers fire on one click.
@@ -412,7 +418,7 @@ final class SeoMetabox {
 			return;
 		}
 
-		echo '<button type="button" class="' . esc_attr( $class ) . '" data-seoistic-ai-action="' . esc_attr( $action ) . '"><span class="dashicons dashicons-superhero"></span> ' . esc_html( $label ) . '</button>';
+		echo '<button type="button" title="' . esc_attr( $title ) . '" class="' . esc_attr( $class ) . '" data-seoistic-ai-action="' . esc_attr( $action ) . '"><span class="dashicons dashicons-superhero"></span> ' . esc_html( $title ) . '</button>';
 	}
 
 	/**
@@ -423,7 +429,7 @@ final class SeoMetabox {
 		echo '<div class="seoistic-field">';
 		echo '<div class="seoistic-field-head"><label class="seoistic-field-label" for="' . esc_attr( $name ) . '">' . esc_html( $label ) . '</label>';
 		if ( isset( $opts['ai'] ) ) {
-			$this->ai_button( $opts['ai']['action'], $opts['ai']['label'] );
+			$this->ai_button( $opts['ai']['action'], $opts['ai']['label'], array( 'credits' => (int) ( $opts['ai']['credits'] ?? 0 ) ) );
 		}
 		echo '</div>';
 		echo '<input type="' . esc_attr( $type ) . '" name="' . esc_attr( $name ) . '" id="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '"' . ( isset( $opts['placeholder'] ) ? ' placeholder="' . esc_attr( $opts['placeholder'] ) . '"' : '' ) . ( isset( $opts['min'], $opts['max'] ) ? ' data-seoistic-counter data-min="' . (int) $opts['min'] . '" data-max="' . (int) $opts['max'] . '"' : '' ) . '>';
@@ -441,7 +447,7 @@ final class SeoMetabox {
 		echo '<div class="seoistic-field">';
 		echo '<div class="seoistic-field-head"><label class="seoistic-field-label" for="' . esc_attr( $name ) . '">' . esc_html( $label ) . '</label>';
 		if ( isset( $opts['ai'] ) ) {
-			$this->ai_button( $opts['ai']['action'], $opts['ai']['label'] );
+			$this->ai_button( $opts['ai']['action'], $opts['ai']['label'], array( 'credits' => (int) ( $opts['ai']['credits'] ?? 0 ) ) );
 		}
 		echo '</div>';
 		echo '<textarea name="' . esc_attr( $name ) . '" id="' . esc_attr( $name ) . '" rows="' . (int) $rows . '"' . ( isset( $opts['min'], $opts['max'] ) ? ' data-seoistic-counter data-min="' . (int) $opts['min'] . '" data-max="' . (int) $opts['max'] . '"' : '' ) . '>' . esc_textarea( $value ) . '</textarea>';

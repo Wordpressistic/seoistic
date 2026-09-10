@@ -41,6 +41,7 @@ final class View {
 				'label' => __( 'Search & Indexing', 'seoistic' ),
 				'items' => array(
 					'seoistic-indexistic' => array( 'label' => __( 'Indexistic', 'seoistic' ), 'icon' => 'search' ),
+					'seoistic-performance' => array( 'label' => __( 'Performance', 'seoistic' ), 'icon' => 'performance' ),
 					'seoistic-gsc'        => array( 'label' => __( 'Search Console', 'seoistic' ), 'icon' => 'chart-area' ),
 					'seoistic-redirects'  => array( 'label' => __( 'Redirects', 'seoistic' ), 'icon' => 'randomize' ),
 				),

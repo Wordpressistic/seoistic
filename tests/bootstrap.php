@@ -40,18 +40,20 @@ if (! function_exists('delete_option')) {
 if (! function_exists('get_transient')) {
     function get_transient($name)
     {
-        return false;
+        return $GLOBALS['seoistic_test_transients'][$name] ?? false;
     }
 }
 if (! function_exists('set_transient')) {
     function set_transient($name, $value, $expiration = 0)
     {
+        $GLOBALS['seoistic_test_transients'][$name] = $value;
         return true;
     }
 }
 if (! function_exists('delete_transient')) {
     function delete_transient($name)
     {
+        unset($GLOBALS['seoistic_test_transients'][$name]);
         return true;
     }
 }
@@ -130,7 +132,7 @@ if (! function_exists('wp_remote_post')) {
 if (! function_exists('wp_remote_get')) {
     function wp_remote_get($url, $args = array())
     {
-        return array();
+        return array_shift($GLOBALS['seoistic_test_responses']) ?? array();
     }
 }
 if (! function_exists('wp_remote_retrieve_body')) {
@@ -245,13 +247,52 @@ if (! function_exists('wp_kses')) {
     }
 }
 
+if (! function_exists('wp_parse_url')) {
+    function wp_parse_url($value, $component = -1)
+    {
+        return parse_url($value, $component);
+    }
+}
+if (! function_exists('_n')) {
+    function _n($single, $plural, $number, $domain = 'default')
+    {
+        return 1 === (int) $number ? $single : $plural;
+    }
+}
 define('DAY_IN_SECONDS', 86400);
 define('HOUR_IN_SECONDS', 3600);
 define('MINUTE_IN_SECONDS', 60);
 define('SEOISTIC_DIR', dirname(__DIR__) . '/');
 function wp_salt($scheme = 'auth') { return 'isolated-test-salt-not-a-production-secret'; }
-function untrailingslashit($value) { return rtrim($value, '/'); }
-function is_wp_error($value) { return false; }
+if (! function_exists('untrailingslashit')) {
+    function untrailingslashit($value)
+    {
+        return rtrim($value, '/');
+    }
+}
+if (! function_exists('get_bloginfo')) {
+    function get_bloginfo($show = '', $filter = 'raw')
+    {
+        return 'Testing SEOistic';
+    }
+}
+class WP_Error {
+    private array $errors = array();
+    private array $data = array();
+    public function __construct($code = '', $message = '', $data = array()) {
+        if ('' !== $code) { $this->errors[$code] = array($message); $this->data[$code] = $data; }
+    }
+    public function get_error_message($code = '') { return (string) reset($this->errors[$code]); }
+    public function get_error_code() { return (string) key($this->errors); }
+    public function get_error_data($code = '')
+    {
+        if ('' === $code) {
+            return $this->data[$this->get_error_code()] ?? array();
+        }
+        return $this->data[$code] ?? array();
+    }
+}
+function is_wp_error($thing) { return $thing instanceof WP_Error; }
 function absint($value) { return abs((int) $value); }
 $GLOBALS['seoistic_test_responses'] = array();
 require_once SEOISTIC_DIR . 'src/autoload.php';

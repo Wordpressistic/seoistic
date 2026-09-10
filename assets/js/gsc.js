@@ -1,12 +1,15 @@
 /**
- * SEOISTIC → Search Console: the per-URL indexing/coverage lookup (URL
- * Inspection API). The Search Analytics tables are server-rendered on page
- * load, so this is the only interactive piece on the dashboard.
+ * SEOISTIC → Search Console: URL Inspection and connection health checks.
  */
 ( function () {
 	'use strict';
 
 	document.addEventListener( 'DOMContentLoaded', function () {
+		initInspection();
+		initHealthCheck();
+	} );
+
+	function initInspection() {
 		var btn = document.getElementById( 'seoistic-gsc-inspect-btn' );
 		if ( ! btn ) {
 			return;
@@ -35,45 +38,92 @@
 					return r.json();
 				} )
 				.then( function ( json ) {
-					if ( ! resultBox ) {
-						return;
-					}
-					resultBox.style.display = 'block';
-					if ( ! json || ! json.success ) {
-						resultBox.className = 'seoistic-tool-result is-error';
-						resultBox.textContent = ( json && json.data && json.data.message ) || 'Inspection failed.';
-						return;
-					}
-					resultBox.className = 'seoistic-tool-result is-success';
-					resultBox.textContent = formatInspection( json.data && json.data.data );
+					showResult( resultBox, json && json.success, gscI18n( 'inspectionFailed' ), json && json.data && json.data.data );
 				} )
 				.catch( function () {
-					if ( resultBox ) {
-						resultBox.style.display = 'block';
-						resultBox.className = 'seoistic-tool-result is-error';
-						resultBox.textContent = 'Inspection failed.';
-					}
+					showResult( resultBox, false, gscI18n( 'inspectionFailed' ) );
 				} )
 				.finally( function () {
 					btn.disabled = false;
 				} );
 		} );
-	} );
+	}
+
+	function initHealthCheck() {
+		var btn = document.getElementById( 'seoistic-gsc-health-btn' );
+		if ( ! btn ) {
+			return;
+		}
+		btn.addEventListener( 'click', function () {
+			var resultBox = document.getElementById( 'seoistic-gsc-health-result' );
+			if ( ! window.SeoisticGsc || ! window.SeoisticGsc.ajaxUrl || ! window.SeoisticGsc.healthNonce ) {
+				return;
+			}
+
+			btn.disabled = true;
+			var body = new URLSearchParams();
+			body.set( 'action', 'seoistic_gsc_test_connection' );
+			body.set( 'nonce', window.SeoisticGsc.healthNonce );
+
+			fetch( window.SeoisticGsc.ajaxUrl, {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: body.toString(),
+			} )
+				.then( function ( response ) {
+					return response.json();
+				} )
+				.then( function ( json ) {
+					if ( json && json.success ) {
+						var data = json.data || {};
+						showResult( resultBox, true, data.property_match ? gscI18n( 'healthy' ) : gscI18n( 'propertyMismatch' ) );
+						return;
+					}
+
+					var failure = ( json && json.data ) || {};
+					if ( failure.access_denied ) {
+						showResult( resultBox, false, gscI18n( 'accessDenied' ) );
+						return;
+					}
+					showResult( resultBox, false, failure.message || gscI18n( 'connectionFailed' ) );
+				} )
+				.catch( function () {
+					showResult( resultBox, false, gscI18n( 'connectionFailed' ) );
+				} )
+				.finally( function () {
+					btn.disabled = false;
+				} );
+		} );
+	}
+
+	function showResult( resultBox, success, message, data ) {
+		if ( ! resultBox ) {
+			return;
+		}
+		resultBox.style.display = 'block';
+		resultBox.className = 'seoistic-tool-result ' + ( success ? 'is-success' : 'is-error' );
+		resultBox.textContent = success && data ? formatInspection( data ) : message;
+	}
+
+	function gscI18n( key ) {
+		return ( window.SeoisticGsc && window.SeoisticGsc.i18n && window.SeoisticGsc.i18n[ key ] ) || '';
+	}
 
 	function formatInspection( data ) {
 		if ( ! data || ! data.indexStatusResult ) {
-			return 'No inspection data returned.';
+			return gscI18n( 'noInspectionData' );
 		}
 		var idx = data.indexStatusResult;
 		var lines = [
-			'Verdict: ' + ( idx.verdict || 'unknown' ),
-			'Coverage: ' + ( idx.coverageState || 'unknown' ),
+			gscI18n( 'verdict' ) + ' ' + ( idx.verdict || gscI18n( 'unknown' ) ),
+			gscI18n( 'coverage' ) + ' ' + ( idx.coverageState || gscI18n( 'unknown' ) ),
 		];
 		if ( idx.lastCrawlTime ) {
-			lines.push( 'Last crawled: ' + idx.lastCrawlTime );
+			lines.push( gscI18n( 'lastCrawled' ) + ' ' + idx.lastCrawlTime );
 		}
 		if ( idx.robotsTxtState ) {
-			lines.push( 'robots.txt: ' + idx.robotsTxtState );
+			lines.push( gscI18n( 'robotsTxt' ) + ' ' + idx.robotsTxtState );
 		}
 		return lines.join( '\n' );
 	}

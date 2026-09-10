@@ -12,8 +12,8 @@ namespace Wpistic\Seoistic\Core;
  */
 final class HtaccessManager {
 
-	private const MARKER_START = "# BEGIN SEOISTIC\n";
-	private const MARKER_END   = "# END SEOISTIC\n";
+	private const MARKER_START = '# BEGIN SEOISTIC';
+	private const MARKER_END   = '# END SEOISTIC';
 
 	private function path(): string {
 		return rtrim( ABSPATH, '/' ) . '/.htaccess';
@@ -28,9 +28,10 @@ final class HtaccessManager {
 	}
 
 	/**
-	 * @return array{success:bool, backup?:string, error?:string}
+	 * @param string $marker Optional feature-specific marker. Independent markers
+	 *                       prevent one SEOistic tool from replacing another's rules.
 	 */
-	public function apply( string $new_rules ): array {
+	public function apply( string $new_rules, ?string $marker = null ): array {
 		if ( ! function_exists( 'WP_Filesystem' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
@@ -39,8 +40,10 @@ final class HtaccessManager {
 			return array( 'success' => false, 'error' => __( 'Could not initialize the filesystem — check file permissions.', 'seoistic' ) );
 		}
 
-		$path   = $this->path();
-		$backup = '';
+		$start         = $this->marker( self::MARKER_START, $marker );
+		$end           = $this->marker( self::MARKER_END, $marker );
+		$path          = $this->path();
+		$backup        = '';
 
 		if ( $wp_filesystem->exists( $path ) ) {
 			$backup = $path . '.seoistic-backup-' . gmdate( 'Ymd-His' );
@@ -50,13 +53,18 @@ final class HtaccessManager {
 		}
 
 		$existing = $this->current();
-		$stripped = (string) preg_replace( '/' . preg_quote( self::MARKER_START, '/' ) . '.*?' . preg_quote( self::MARKER_END, '/' ) . '/s', '', $existing );
-		$final    = rtrim( $stripped ) . "\n\n" . self::MARKER_START . rtrim( $new_rules ) . "\n" . self::MARKER_END;
+		$pattern  = '/\n?' . preg_quote( $start, '/' ) . '\r?\n.*?\r?\n' . preg_quote( $end, '/' ) . '\n?/s';
+		$stripped = (string) preg_replace( $pattern, '', $existing );
+		$final    = rtrim( $stripped ) . "\n\n" . $start . "\n" . rtrim( $new_rules ) . "\n" . $end . "\n";
 
 		if ( ! $wp_filesystem->put_contents( $path, ltrim( $final ), defined( 'FS_CHMOD_FILE' ) ? FS_CHMOD_FILE : 0644 ) ) {
 			return array( 'success' => false, 'error' => __( 'Could not write .htaccess — check file permissions.', 'seoistic' ) );
 		}
 
 		return array( 'success' => true, 'backup' => '' !== $backup ? basename( $backup ) : '' );
+	}
+
+	private function marker( string $base, ?string $suffix ): string {
+		return null === $suffix || '' === $suffix ? $base : $base . ' ' . $suffix;
 	}
 }

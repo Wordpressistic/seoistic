@@ -57,6 +57,20 @@ final class Tables {
 			KEY engine (engine)
 		) {$charset};";
 
+		$schemas[] = "CREATE TABLE {$prefix}schema_blocks (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			title VARCHAR(191) NOT NULL,
+			type VARCHAR(191) NOT NULL,
+			rules LONGTEXT NOT NULL,
+			mapping LONGTEXT NOT NULL,
+			active TINYINT(1) NOT NULL DEFAULT 1,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			KEY active (active),
+			KEY type (type(191))
+		) {$charset};";
+
 		foreach ( $schemas as $schema ) {
 			dbDelta( $schema );
 		}

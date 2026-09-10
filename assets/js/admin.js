@@ -28,7 +28,9 @@
 		} ).then( function ( r ) {
 			return r.json().then( function ( json ) {
 				if ( ! r.ok ) {
-					throw new Error( ( json && json.message ) || 'Request failed' );
+					var err = new Error( ( json && json.message ) || 'Request failed' );
+					err.data = json && json.data ? json.data : {};
+					throw err;
 				}
 				return json;
 			} );
@@ -47,7 +49,9 @@
 		} ).then( function ( r ) {
 			return r.json().then( function ( json ) {
 				if ( ! r.ok ) {
-					throw new Error( ( json && json.message ) || 'Request failed' );
+					var err = new Error( ( json && json.message ) || 'Request failed' );
+					err.data = json && json.data ? json.data : {};
+					throw err;
 				}
 				return json;
 			} );
@@ -742,3 +746,15 @@
 			} );
 	}
 } )();
+
+/* AI REST errors carry structured upgrade-card data from WPisticAiClient. */
+window.seoisticAiError = function ( error ) {
+	var data = error && error.data ? error.data : {};
+	return {
+		message: ( error && error.message ) || 'AI request failed.',
+		upgrade: !! data.upgrade_card,
+		creditsLeft: parseInt( data.credits_left, 10 ) || 0,
+		plan: data.plan || '',
+		usage: data.usage || {}
+	};
+};
