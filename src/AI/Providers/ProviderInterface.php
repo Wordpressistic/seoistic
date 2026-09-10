@@ -7,7 +7,7 @@ namespace Wpistic\Seoistic\AI\Providers;
 /**
  * A single AI backend SEOISTIC can talk to. Every provider takes the same
  * already-resolved settings (model/temperature/max_tokens) and returns the
- * same shape — AiGateway doesn't need to know which one it's calling.
+ * same shape — OpenAiCompatibleClient consumes the shared interface contract.
  */
 interface ProviderInterface {
 

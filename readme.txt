@@ -4,7 +4,7 @@ Tags: seo, schema, sitemap, redirects, indexing
 Requires at least: 6.4
 Tested up to: 6.4
 Requires PHP: 8.1
-Stable tag: 1.5.3
+Stable tag: 1.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -108,6 +108,20 @@ this plugin's `/assets` directory following the standard WordPress.org
 screenshot-N.png convention before a .org submission.)
 
 == Changelog ==
+
+See CHANGELOG.md in the plugin's source repository for the full history.
+Highlights for this release are below.
+
+= 1.6.0 "Aurora" =
+* New addon: AI Search Visibility (AEO) — llms.txt studio, AI crawler analytics, AI-scored AEO audits, citation checklist (Business)
+* New addon: Rank Tracker & Reports — keyword positions, sparklines, white-label reports (Business)
+* New addon: Schema Pro — visual schema builder with live validation and conditional rules (Pro)
+* New addon: Performance & Core Web Vitals — PSI via WPistic proxy, trend cards, threshold alerts, Quick Wins (Pro)
+* AI Credits system: all AI runs on the WPistic AI backend — no API keys. Monthly credits per plan with live usage widget; Business/Agency can connect a custom model
+* Business Automator: approval-gated recipes with run history and diff preview (Business)
+* Google Search Console: real recovery flow for 403 access_denied, refresh-token rotation
+* Aurora UI: animated scores, step-trackers, skeletons, toasts, onboarding checklist; respects prefers-reduced-motion
+
 
 See CHANGELOG.md in the plugin's source repository for the full history.
 Highlights for this release are below.

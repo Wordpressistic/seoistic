@@ -97,7 +97,6 @@ final class IndexisticPage {
 		echo '<label style="margin-left:16px;' . ( $google->is_configured() ? '' : 'opacity:.5;' ) . '"><input type="radio" name="seoistic_indexistic_engine" value="google" ' . disabled( $google->is_configured(), false, false ) . '> ' . esc_html__( 'Google Indexing API', 'seoistic' ) . '</label>';
 		echo '</div>';
 
-		echo '<div class="seoistic-tool-progress" id="seoistic-indexistic-progress"><div class="seoistic-tool-progress-bar"></div></div>';
 		echo '<button type="button" class="seoistic-btn seoistic-btn-primary" id="seoistic-indexistic-submit"><span class="dashicons dashicons-upload"></span> ' . esc_html__( 'Submit URLs', 'seoistic' ) . '</button>';
 		echo '<button type="button" class="seoistic-btn" id="seoistic-indexistic-check-status" style="margin-left:8px;" ' . disabled( $google->is_configured(), false, false ) . '><span class="dashicons dashicons-search"></span> ' . esc_html__( 'Check Google status (first URL)', 'seoistic' ) . '</button>';
 		echo '<div class="seoistic-tool-result" id="seoistic-indexistic-result"></div>';

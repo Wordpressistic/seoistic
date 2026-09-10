@@ -7,10 +7,10 @@ namespace Wpistic\Seoistic\Addon;
 use Wpistic\Seoistic\Module\AbstractModule;
 
 /**
- * Listing entry only — the real AI generation lives in src/AI (AiGateway,
+ * Listing entry only — the real AI generation lives in src/AI (WpisticAiClient,
  * AiService, RestController) and is wired directly from Plugin::boot() so the AI
  * settings/tools pages exist regardless of this module's toggle state. Entitlement
- * (Pro plan required) is enforced once, in AiGateway::chat().
+ * calls are routed through the managed client.
  */
 final class AiModule extends AbstractModule {
 
@@ -23,7 +23,7 @@ final class AiModule extends AbstractModule {
 	}
 
 	public function description(): string {
-		return __( 'Generate titles, meta descriptions, focus keywords, schema, alt text and full-page optimizations with OpenRouter, Groq, or your own self-hosted Ollama.', 'seoistic' );
+		return __( 'Generate titles, meta descriptions, focus keywords, schema, alt text and full-page optimizations with managed WPistic AI credits.', 'seoistic' );
 	}
 
 	public function tier(): string {

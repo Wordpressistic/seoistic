@@ -312,17 +312,12 @@
 		}
 		var ring = wrap.querySelector( '.seoistic-ring' );
 		if ( ring ) {
-			var fill = ring.querySelector( '.seoistic-ring-fill' );
-			if ( fill ) {
-				var radius = parseFloat( fill.getAttribute( 'r' ) ) || 22;
-				var circumference = 2 * Math.PI * radius;
-				fill.style.strokeDashoffset = String( circumference * ( 1 - score / 100 ) );
-			}
 			ring.classList.remove( 'is-good', 'is-warn', 'is-bad', 'is-excellent' );
 			ring.classList.add( ringTone( score ) );
-			var label = ring.querySelector( '.seoistic-ring-label' );
-			if ( label ) {
-				label.textContent = String( score );
+			if ( window.auroraAnimateScore ) {
+				window.auroraAnimateScore( ring, score, {
+					from: parseInt( ring.getAttribute( 'data-aurora-score' ), 10 ) || 0
+				} );
 			}
 		}
 		var band = document.getElementById( 'seoistic-score-band' );
@@ -426,7 +421,19 @@
 				if ( resultBox ) {
 					resultBox.style.display = 'block';
 					resultBox.className = 'seoistic-tool-result is-error';
-					resultBox.textContent = err.message || i18n( 'aiFailed', 'AI request failed.' );
+					resultBox.textContent = window.seoisticAiError ? window.seoisticAiError( err ).message : ( err.message || i18n( 'aiFailed', 'AI request failed.' ) );
+					if ( err.data && err.data.upgrade_card ) {
+						resultBox.className += ' seoistic-ai-upgrade-card';
+						resultBox.innerHTML = '';
+						var text = document.createElement( 'strong' );
+						text.textContent = err.message;
+						var link = document.createElement( 'a' );
+						link.href = 'admin.php?page=seoistic-pricing';
+						link.textContent = i18n( 'upgrade', 'Upgrade plan' );
+						resultBox.appendChild( text );
+						resultBox.appendChild( document.createElement( 'br' ) );
+						resultBox.appendChild( link );
+					}
 				}
 			} )
 			.finally( function () {

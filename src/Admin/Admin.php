@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace Wpistic\Seoistic\Admin;
 
 use Wpistic\Seoistic\Core\DashboardMetrics;
+use Wpistic\Seoistic\License\LicenseClient;
 use Wpistic\Seoistic\Core\Links;
 use Wpistic\Seoistic\Core\Scorer;
-use Wpistic\Seoistic\License\LicenseClient;
+use Wpistic\Seoistic\Core\Performance\PerformanceService;
 use Wpistic\Seoistic\License\Plans;
 use Wpistic\Seoistic\Module\Entitlement;
 use Wpistic\Seoistic\Module\ModuleRegistry;
@@ -66,12 +67,14 @@ final class Admin {
 		}
 
 		wp_enqueue_style( 'seoistic-admin', SEOISTIC_URL . 'assets/css/admin.css', array(), SEOISTIC_VERSION );
+		wp_enqueue_style( 'seoistic-aurora', SEOISTIC_URL . 'assets/css/aurora.css', array( 'seoistic-admin' ), SEOISTIC_VERSION );
 
 		if ( $is_list_screen ) {
 			return; // List tables only need the styles.
 		}
 
 		wp_enqueue_script( 'seoistic-admin', SEOISTIC_URL . 'assets/js/admin.js', array(), SEOISTIC_VERSION, true );
+		wp_enqueue_script( 'seoistic-aurora', SEOISTIC_URL . 'assets/js/aurora.js', array(), SEOISTIC_VERSION, true );
 		wp_localize_script(
 			'seoistic-admin',
 			'SeoisticAdmin',
@@ -91,6 +94,10 @@ final class Admin {
 					'content'       => __( 'Content', 'seoistic' ),
 					'notScored'     => __( 'Not scored', 'seoistic' ),
 					'searchFailed'  => __( 'Search failed — check your connection.', 'seoistic' ),
+					'working'       => __( 'Working…', 'seoistic' ),
+					'processing'    => __( 'Processing', 'seoistic' ),
+					'queued'        => __( 'Queued', 'seoistic' ),
+					'done'          => __( 'Done', 'seoistic' ),
 				),
 			)
 		);
@@ -116,6 +123,7 @@ final class Admin {
 						'undo'          => __( 'Undo', 'seoistic' ),
 						'aiSuggestion'  => __( 'AI suggestion', 'seoistic' ),
 						'aiFailed'      => __( 'AI request failed.', 'seoistic' ),
+						'upgrade'       => __( 'Upgrade plan', 'seoistic' ),
 						'empty'         => __( '(empty)', 'seoistic' ),
 						'priorityFixes' => __( 'Priority fixes', 'seoistic' ),
 						'passedChecks'  => __( 'Passed checks', 'seoistic' ),
@@ -156,6 +164,8 @@ final class Admin {
 		$prev_score   = count( $history ) >= 2 ? (int) $history[ count( $history ) - 2 ]['score'] : null;
 
 		View::header( 'seoistic', __( 'Dashboard', 'seoistic' ) );
+		AiCreditsWidget::render();
+		$this->render_onboarding( $metrics );
 		?>
 		<section class="seoistic-hero" aria-label="<?php esc_attr_e( 'SEO health overview', 'seoistic' ); ?>">
 			<div class="seoistic-hero-score">
@@ -206,7 +216,6 @@ final class Admin {
 				<a class="seoistic-btn" href="<?php echo esc_url( admin_url( 'admin.php?page=seoistic-content' ) ); ?>"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span> <?php esc_html_e( 'Review Content', 'seoistic' ); ?></a>
 			</div>
 		</section>
-		<div id="seoistic-audit-progress" class="seoistic-tool-progress"><div class="seoistic-tool-progress-bar"></div></div>
 		<div id="seoistic-audit-result" class="seoistic-tool-result" role="status"></div>
 
 		<div class="seoistic-quick-actions">
@@ -238,11 +247,68 @@ final class Admin {
 			View::card( 'welcome-widgets-menus', $metrics['schema_enabled'] ? __( 'Enabled', 'seoistic' ) : __( 'Disabled', 'seoistic' ), __( 'Schema Markup', 'seoistic' ), $metrics['schema_enabled'] ? 'good' : 'bad' );
 			View::card( 'networking', $metrics['sitemap_enabled'] ? __( 'Live', 'seoistic' ) : __( 'Disabled', 'seoistic' ), __( 'XML Sitemap', 'seoistic' ), $metrics['sitemap_enabled'] ? 'good' : 'bad' );
 			View::card( 'superhero', $metrics['ai_configured'] ? __( 'Configured', 'seoistic' ) : ( $metrics['ai_enabled'] ? __( 'Key missing', 'seoistic' ) : __( 'Off', 'seoistic' ) ), __( 'AI Optimization', 'seoistic' ), $metrics['ai_configured'] ? 'good' : 'warn' );
-			View::card( 'performance', __( 'Premium', 'seoistic' ), __( 'Core Web Vitals', 'seoistic' ), 'neutral', __( 'Upgrade to unlock', 'seoistic' ), 'premium' );
+			$performance_module = $this->registry->all()['performance'] ?? null;
+			$cwv_available = $performance_module && 'active' === $performance_module->status() && Entitlement::can( $performance_module->id(), $performance_module->tier() ) && $this->registry->is_enabled( $performance_module );
+			if ( $cwv_available ) {
+				$cwv = PerformanceService::dashboard_cards();
+				View::card( 'performance', null === $cwv['lcp']['value'] ? __( 'Not checked', 'seoistic' ) : PerformanceService::format_metric( 'lcp', $cwv['lcp']['value'] ), __( 'Core Web Vitals — LCP', 'seoistic' ), $cwv['lcp']['tone'], null === $cwv['lcp']['change'] ? __( 'No weekly trend', 'seoistic' ) : sprintf( '%+.1f%%', $cwv['lcp']['change'] ), null === $cwv['lcp']['change'] ? 'neutral' : ( $cwv['lcp']['change'] < 0 ? 'good' : 'bad' ) );
+			} else {
+				View::card( 'performance', __( 'Premium', 'seoistic' ), __( 'Core Web Vitals', 'seoistic' ), 'neutral', __( 'Upgrade to unlock', 'seoistic' ), 'premium' );
+			}
 			?>
 		</div>
 		<?php
 		View::footer();
+	}
+
+	private function render_onboarding( array $metrics ): void {
+		$license_connected = ( new LicenseClient() )->is_valid();
+		$has_audit = null !== $metrics['seo_health'] && (int) $metrics['scored_count'] > 0;
+		$titles_set = (int) ( $metrics['total_published'] ?? 0 ) > 0 && 0 === (int) ( $metrics['missing_title'] ?? 0 );
+		$steps = array(
+			array(
+				'icon' => 'admin-network',
+				'label' => __( 'Connect your license', 'seoistic' ),
+				'url' => admin_url( 'admin.php?page=seoistic-license' ),
+				'cta' => __( 'Connect', 'seoistic' ),
+				'complete' => $license_connected,
+			),
+			array(
+				'icon' => 'shield',
+				'label' => __( 'Run your first audit', 'seoistic' ),
+				'url' => '#seoistic-run-audit',
+				'cta' => __( 'Run audit', 'seoistic' ),
+				'complete' => $has_audit,
+			),
+			array(
+				'icon' => 'editor-textcolor',
+				'label' => __( 'Set SEO titles', 'seoistic' ),
+				'url' => admin_url( 'admin.php?page=seoistic-content&seo_filter=missing_title' ),
+				'cta' => __( 'Review titles', 'seoistic' ),
+				'complete' => $titles_set,
+			),
+		);
+		$complete = count( array_filter( wp_list_pluck( $steps, 'complete' ) ) );
+		?>
+		<section class="aurora-onboarding" data-aurora-onboarding aria-label="<?php esc_attr_e( 'SEOistic onboarding checklist', 'seoistic' ); ?>">
+			<div class="aurora-onboarding-head">
+				<h2 class="aurora-onboarding-title"><span class="dashicons dashicons-superhero-alt" aria-hidden="true"></span><?php esc_html_e( 'Get started with SEOistic', 'seoistic' ); ?></h2>
+				<?php echo View::badge( sprintf( '%d / %d', $complete, count( $steps ) ), $complete === count( $steps ) ? 'good' : 'neutral' ); ?>
+			</div>
+			<ul class="aurora-onboarding-list">
+				<?php foreach ( $steps as $step ) : ?>
+					<li class="aurora-onboarding-item<?php echo $step['complete'] ? ' is-complete' : ''; ?>">
+						<span class="aurora-onboarding-label"><span class="dashicons dashicons-<?php echo esc_attr( $step['icon'] ); ?>" aria-hidden="true"></span><?php echo esc_html( $step['label'] ); ?></span>
+						<?php if ( $step['complete'] ) : ?>
+							<span class="aurora-check" aria-hidden="true"></span><span class="screen-reader-text"><?php esc_html_e( 'Completed', 'seoistic' ); ?></span>
+						<?php else : ?>
+							<a class="seoistic-btn seoistic-btn-sm" href="<?php echo esc_url( $step['url'] ); ?>"><?php echo esc_html( $step['cta'] ); ?></a>
+						<?php endif; ?>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+		</section>
+		<?php
 	}
 
 	private function page_registered( string $slug ): bool {

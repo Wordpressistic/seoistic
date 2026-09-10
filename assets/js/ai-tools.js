@@ -12,6 +12,10 @@
 		llms: { path: '/ai/generate-llms', field: 'llms_txt', apply: '/tools/apply-llms' },
 	};
 
+	function i18n( key, fallback ) {
+		return ( window.SeoisticAdmin && window.SeoisticAdmin.i18n && window.SeoisticAdmin.i18n[ key ] ) || fallback;
+	}
+
 	document.addEventListener( 'DOMContentLoaded', function () {
 		initGenerators();
 		initBulkActions();
@@ -52,9 +56,13 @@
 				if ( ! config ) {
 					return;
 				}
+				var card = btn.closest( '.seoistic-tool-card' );
 				var original = btn.innerHTML;
 				btn.disabled = true;
 				btn.innerHTML = '<span class="dashicons dashicons-update"></span> ' + 'Generating…';
+				if ( window.auroraSkeletons && card ) {
+					window.auroraSkeletons( card, true );
+				}
 
 				restPost( config.path, {} )
 					.then( function ( json ) {
@@ -63,9 +71,14 @@
 						bindApply( config.apply, type );
 					} )
 					.catch( function ( err ) {
-						window.alert( err.message || 'Generation failed.' ); // eslint-disable-line no-alert
+						if ( window.seoisticToast ) {
+							window.seoisticToast( err.message || 'Generation failed.', 'error' );
+						}
 					} )
 					.finally( function () {
+						if ( window.auroraSkeletons && card ) {
+							window.auroraSkeletons( card, false );
+						}
 						btn.disabled = false;
 						btn.innerHTML = original;
 					} );
@@ -132,22 +145,30 @@
 
 	function runBulk( btn, tool, offset ) {
 		var card = btn.closest( '.seoistic-tool-card' );
-		var progressWrap = card ? card.querySelector( '.seoistic-tool-progress' ) : null;
-		var progressBar = card ? card.querySelector( '.seoistic-tool-progress-bar' ) : null;
 		var resultBox = card ? card.querySelector( '.seoistic-tool-result' ) : null;
+		var tracker = window.auroraTracker && card ? window.auroraTracker( card, {
+			queued: i18n( 'queued', 'Queued' ),
+			progress: i18n( 'processing', 'Processing' ),
+			done: i18n( 'done', 'Done' ),
+			queuedMessage: i18n( 'working', 'Working…' )
+		} ) : null;
 
 		btn.disabled = true;
-		if ( progressWrap ) {
-			progressWrap.style.display = 'block';
+		if ( tracker ) {
+			tracker.start();
 		}
 
 		restPost( '/tools/' + tool, { offset: offset } )
 			.then( function ( json ) {
-				if ( progressBar ) {
-					progressBar.style.width = Math.round( json.percent || 0 ) + '%';
+				if ( tracker ) {
+					tracker.state( 'progress' );
+					tracker.progress( json.next_offset || 0, Math.max( json.next_offset || 0, estimateTotal( json.next_offset || 0, json.percent || 1 ) ) );
 				}
 				if ( json.done ) {
 					btn.disabled = false;
+					if ( tracker ) {
+						tracker.finish( formatBulkDone( json ) );
+					}
 					showResult( resultBox, true, formatBulkDone( json ) );
 					if ( json.report && json.report.length ) {
 						showReportModal( json.report );
@@ -155,11 +176,20 @@
 				} else {
 					runBulk( btn, tool, json.next_offset );
 				}
-			} )
+				} )
 			.catch( function ( err ) {
 				btn.disabled = false;
-				showResult( resultBox, false, err.message || 'Failed.' );
+				var friendly = window.seoisticAiError ? window.seoisticAiError( err ).message : ( err.message || 'Failed.' );
+				showResult( resultBox, false, friendly );
+				if ( tracker ) {
+					tracker.fail( friendly );
+				}
 			} );
+			}
+
+	function estimateTotal( processed, percent ) {
+		var ratio = Math.max( 0.01, Math.min( 1, ( Number( percent ) || 1 ) / 100 ) );
+		return Math.max( processed, Math.ceil( processed / ratio ) );
 	}
 
 	function formatBulkDone( json ) {

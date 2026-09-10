@@ -41,6 +41,7 @@ final class View {
 				'label' => __( 'Search & Indexing', 'seoistic' ),
 				'items' => array(
 					'seoistic-indexistic' => array( 'label' => __( 'Indexistic', 'seoistic' ), 'icon' => 'search' ),
+					'seoistic-performance' => array( 'label' => __( 'Performance', 'seoistic' ), 'icon' => 'performance' ),
 					'seoistic-gsc'        => array( 'label' => __( 'Search Console', 'seoistic' ), 'icon' => 'chart-area' ),
 					'seoistic-redirects'  => array( 'label' => __( 'Redirects', 'seoistic' ), 'icon' => 'randomize' ),
 				),
@@ -49,6 +50,7 @@ final class View {
 				'label' => __( 'AI & Automation', 'seoistic' ),
 				'items' => array(
 					'seoistic-ai-tools'            => array( 'label' => __( 'AI Tools', 'seoistic' ), 'icon' => 'superhero', 'badge' => 'ai' ),
+					'seoistic-aeo'                 => array( 'label' => __( 'AI Search', 'seoistic' ), 'icon' => 'superhero-alt', 'badge' => 'business' ),
 					'seoistic-business-automator'  => array( 'label' => __( 'Business Automator', 'seoistic' ), 'icon' => 'controls-repeat' ),
 				),
 			),
@@ -301,9 +303,10 @@ final class View {
 		$offset        = $circumference * ( 1 - $score / 100 );
 
 		$label = $show_label ? '<span class="seoistic-ring-label">' . (int) $score . ( 'lg' === $size ? '<small>' . esc_html__( '/ 100', 'seoistic' ) . '</small>' : '' ) . '</span>' : '';
+		$score_value = (int) $score;
 
 		return sprintf(
-			'<span class="seoistic-ring seoistic-ring-%1$s is-%2$s" role="img" aria-label="%3$s">'
+			'<span class="seoistic-ring seoistic-ring-%1$s is-%2$s" role="img" aria-label="%3$s" data-aurora-score="%10$d">'
 			. '<svg width="%4$d" height="%4$d" viewBox="0 0 %4$d %4$d" aria-hidden="true">'
 			. '<circle class="seoistic-ring-track" cx="%5$d" cy="%5$d" r="%6$d" style="stroke-width:%7$d"></circle>'
 			. '<circle class="seoistic-ring-fill" cx="%5$d" cy="%5$d" r="%6$d" style="stroke-width:%7$d;stroke-dasharray:%8$F;stroke-dashoffset:%9$F"></circle>'
@@ -320,7 +323,8 @@ final class View {
 			$stroke,
 			$circumference,
 			$offset,
-			$label
+			$label,
+			$score_value
 		);
 	}
 

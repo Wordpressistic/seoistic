@@ -7,6 +7,7 @@ namespace Wpistic\Seoistic\AI;
 use Wpistic\Seoistic\Core\HtaccessManager;
 use Wpistic\Seoistic\Core\PostSeo;
 use Wpistic\Seoistic\Core\Scorer;
+use Wpistic\Seoistic\Core\AI\WpisticAiClient;
 use Wpistic\Seoistic\Core\Sitemaps;
 use WP_Error;
 use WP_REST_Request;
@@ -163,6 +164,16 @@ final class RestController {
 			)
 		);
 
+		register_rest_route(
+			self::NS,
+			'/ai/credits',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'handle_credits' ),
+				'permission_callback' => static fn(): bool => current_user_can( 'edit_posts' ),
+			)
+		);
+
 		// Live, non-persisting analysis of draft field values (post editor).
 		register_rest_route(
 			self::NS,
@@ -233,7 +244,8 @@ final class RestController {
 		$result  = $service->generate( $type, $service->page_context_from_post( $post_id ) );
 
 		if ( ! $result['success'] ) {
-			return new WP_Error( 'seoistic_ai_error', $result['error'], array( 'status' => 502 ) );
+			$result['success'] = false;
+			return $this->ai_error( $result );
 		}
 
 		return new WP_REST_Response( array( 'success' => true, 'data' => $result['data'] ), 200 );
@@ -260,7 +272,8 @@ final class RestController {
 		$result  = $service->generate( $type, array( 'title' => get_bloginfo( 'name' ), 'url' => home_url( '/' ) ) );
 
 		if ( ! $result['success'] ) {
-			return new WP_Error( 'seoistic_ai_error', $result['error'], array( 'status' => 502 ) );
+			$result['success'] = false;
+			return $this->ai_error( $result );
 		}
 		return new WP_REST_Response( array( 'success' => true, 'data' => $result['data'] ), 200 );
 	}
@@ -617,6 +630,33 @@ final class RestController {
 						(array) $worst
 					),
 				),
+			),
+			200
+		);
+	}
+
+	private function ai_error( array $result ) {
+		$data = $result['error_data'] ?? array();
+		return new WP_Error(
+			(string) ( $result['error_code'] ?? 'seoistic_ai_error' ),
+			(string) ( $result['error'] ?? __( 'The AI request failed.', 'seoistic' ) ),
+			array(
+				'status'       => (int) ( $data['status'] ?? 502 ),
+				'upgrade_card' => ! empty( $data['upgrade_card'] ),
+				'credits_left' => (int) ( $data['credits_left'] ?? 0 ),
+				'plan'         => (string) ( $data['plan'] ?? '' ),
+				'task'         => (string) ( $result['task'] ?? '' ),
+				'usage'        => (array) ( $result['usage'] ?? array() ),
+			)
+		);
+	}
+
+	public function handle_credits() {
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'data'    => WpisticAiClient::usage_snapshot(),
+				'costs'   => WpisticAiClient::credit_costs(),
 			),
 			200
 		);

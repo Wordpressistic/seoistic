@@ -5,53 +5,19 @@ declare(strict_types=1);
 namespace Wpistic\Seoistic\AI;
 
 use Wpistic\Seoistic\Core\Crypto;
+use Wpistic\Seoistic\License\LicenseClient;
+use Wpistic\Seoistic\Module\Entitlement;
 
 /**
- * The seoistic_ai_options option + the per-provider API keys. Keys are stored
- * encrypted (Core\Crypto, AES-256-CBC keyed off wp_salt('auth')) so they never
- * live in the database in plaintext and are never sent to the browser —
- * settings screens only ever render a masked placeholder, never the real value.
- *
- * Three providers are supported: OpenRouter and Groq (both need an API key,
- * both speak the same OpenAI-compatible chat-completions format), and a
- * self-hosted Ollama instance (no key — just a base URL on the site owner's
- * own network/VPS, also OpenAI-compatible via its /v1 endpoint).
+ * AI preferences and encrypted custom-model credentials. Legacy provider
+ * options are not deleted during upgrade, but they are no longer used.
  */
 final class AiSettings {
 
 	private const CRYPTO_CONTEXT  = 'seoistic-ai';
 	private const OPTION          = 'seoistic_ai_options';
 	private const KEY_OPTION_BASE = 'seoistic_ai_key_enc_';
-
-	public const PROVIDERS = array(
-		'openrouter' => 'OpenRouter',
-		'groq'       => 'Groq (free tier)',
-		'ollama'     => 'Ollama (self-hosted, local models)',
-	);
-
-	public const OPENROUTER_MODELS = array(
-		'openai/gpt-4.1-nano'        => 'GPT-4.1 nano (default, most affordable)',
-		'openai/gpt-4.1-mini'        => 'GPT-4.1 mini',
-		'google/gemini-flash-1.5'    => 'Gemini 1.5 Flash',
-		'anthropic/claude-3.5-haiku' => 'Claude 3.5 Haiku',
-		'qwen/qwen3-coder'           => 'Qwen3 Coder',
-	);
-
-	public const GROQ_MODELS = array(
-		'llama-3.1-8b-instant'      => 'Llama 3.1 8B Instant (default, fastest)',
-		'llama-3.3-70b-versatile'   => 'Llama 3.3 70B Versatile',
-		'gemma2-9b-it'              => 'Gemma 2 9B',
-		'mixtral-8x7b-32768'        => 'Mixtral 8x7B',
-	);
-
-	public const OLLAMA_MODELS = array(
-		'hermes2-theta:latest'      => 'Hermes 2 Theta (default, recommended)',
-		'mistral:latest'            => 'Mistral',
-		'neural-chat:latest'        => 'Neural Chat',
-		'dolphin-mixtral:latest'    => 'Dolphin Mixtral',
-		'llama2:latest'             => 'Llama 2',
-		'openchat:latest'           => 'OpenChat',
-	);
+	private const CACHE_GENERATION  = 'seoistic_ai_cache_generation';
 
 	/**
 	 * @return array<string, mixed>
@@ -59,11 +25,6 @@ final class AiSettings {
 	public static function all(): array {
 		$defaults = array(
 			'enabled'          => false,
-			'provider'         => 'openrouter',
-			'model_openrouter' => 'openai/gpt-4.1-nano',
-			'model_groq'       => 'llama-3.1-8b-instant',
-			'ollama_base_url'  => 'http://127.0.0.1:11434',
-			'ollama_model'     => 'hermes2-theta:latest',
 			'temperature'      => 0.4,
 			'max_tokens'       => 900,
 			'business_name'    => get_bloginfo( 'name' ),
@@ -74,6 +35,8 @@ final class AiSettings {
 			'kb_mode'          => 'balanced',
 			'custom_rag_enabled' => false,
 			'custom_rag_path'   => '',
+			'custom_base_url'   => '',
+			'custom_model'      => '',
 		);
 		$saved = get_option( self::OPTION, array() );
 		return array_merge( $defaults, is_array( $saved ) ? $saved : array() );
@@ -81,32 +44,6 @@ final class AiSettings {
 
 	public static function is_enabled(): bool {
 		return ! empty( self::all()['enabled'] );
-	}
-
-	public static function provider(): string {
-		$provider = (string) self::all()['provider'];
-		return isset( self::PROVIDERS[ $provider ] ) ? $provider : 'openrouter';
-	}
-
-	/**
-	 * The model for the currently selected provider — each provider remembers
-	 * its own last-picked model so switching providers doesn't lose the choice.
-	 */
-	public static function model(): string {
-		$all = self::all();
-		return match ( self::provider() ) {
-			'groq' => isset( self::GROQ_MODELS[ (string) $all['model_groq'] ] ) ? (string) $all['model_groq'] : 'llama-3.1-8b-instant',
-			'ollama' => (string) $all['ollama_model'],
-			default => isset( self::OPENROUTER_MODELS[ (string) $all['model_openrouter'] ] ) ? (string) $all['model_openrouter'] : 'openai/gpt-4.1-nano',
-		};
-	}
-
-	public static function ollama_base_url(): string {
-		return rtrim( (string) self::all()['ollama_base_url'], '/' );
-	}
-
-	public static function ollama_model(): string {
-		return (string) self::all()['ollama_model'];
 	}
 
 	public static function custom_rag_enabled(): bool {
@@ -126,16 +63,62 @@ final class AiSettings {
 	}
 
 	/**
-	 * Whether the currently selected provider has what it needs to run — an
-	 * API key for OpenRouter/Groq, or a configured base URL + model for Ollama.
-	 * Never makes a network call; this is a cheap, page-load-safe check.
+	 * Whether the current plan may route AI through its own OpenAI-compatible model.
+	 */
+	public static function custom_models_allowed(): bool {
+		$plan = Entitlement::plan();
+		return in_array( $plan, array( 'business', 'agency' ), true );
+	}
+
+	public static function custom_base_url(): string {
+		$base = rtrim( (string) self::all()['custom_base_url'], '/' );
+		$host = (string) wp_parse_url( $base, PHP_URL_HOST );
+		$port = wp_parse_url( $base, PHP_URL_PORT );
+		$path = (string) wp_parse_url( $base, PHP_URL_PATH );
+		$path = untrailingslashit( str_replace( array( '/chat/completions', '/completions' ), '', $path ) );
+		$scheme = wp_parse_url( $base, PHP_URL_SCHEME );
+		if ( '' === $host ) {
+			return '';
+		}
+		return $scheme . '://' . $host . ( $port ? ':' . $port : '' ) . $path;
+	}
+
+	public static function custom_model(): string {
+		return sanitize_text_field( (string) self::all()['custom_model'] );
+	}
+
+	public static function custom_api_key(): string {
+		return self::api_key( 'custom' );
+	}
+
+	public static function is_custom_configured(): bool {
+		return self::custom_models_allowed()
+			&& '' !== self::custom_base_url()
+			&& '' !== self::custom_model()
+			&& self::has_api_key( 'custom' );
+	}
+
+	public static function custom_model_signature(): string {
+		return self::is_custom_configured() ? self::custom_base_url() . '|' . self::custom_model() : '';
+	}
+
+	public static function cache_generation(): int {
+		return (int) get_option( self::CACHE_GENERATION, 1 );
+	}
+
+	public static function bump_cache_generation(): void {
+		update_option( self::CACHE_GENERATION, self::cache_generation() + 1, false );
+	}
+
+	/**
+	 * A license key is the only credential required for managed AI requests.
 	 */
 	public static function is_configured(): bool {
-		return match ( self::provider() ) {
-			'groq' => self::has_api_key( 'groq' ),
-			'ollama' => '' !== self::ollama_base_url() && '' !== self::ollama_model(),
-			default => self::has_api_key( 'openrouter' ),
-		};
+		return self::is_gateway_ready();
+	}
+
+	public static function is_gateway_ready(): bool {
+		return ( new LicenseClient() )->key() !== '';
 	}
 
 	/**
@@ -145,11 +128,6 @@ final class AiSettings {
 		$current = self::all();
 		$clean   = array(
 			'enabled'          => ! empty( $fields['enabled'] ),
-			'provider'         => isset( self::PROVIDERS[ (string) ( $fields['provider'] ?? '' ) ] ) ? (string) $fields['provider'] : $current['provider'],
-			'model_openrouter' => isset( self::OPENROUTER_MODELS[ (string) ( $fields['model_openrouter'] ?? '' ) ] ) ? (string) $fields['model_openrouter'] : $current['model_openrouter'],
-			'model_groq'       => isset( self::GROQ_MODELS[ (string) ( $fields['model_groq'] ?? '' ) ] ) ? (string) $fields['model_groq'] : $current['model_groq'],
-			'ollama_base_url'  => esc_url_raw( (string) ( $fields['ollama_base_url'] ?? $current['ollama_base_url'] ) ),
-			'ollama_model'     => sanitize_text_field( (string) ( $fields['ollama_model'] ?? $current['ollama_model'] ) ),
 			'temperature'      => max( 0, min( 2, (float) ( $fields['temperature'] ?? $current['temperature'] ) ) ),
 			'max_tokens'       => max( 100, min( 4000, (int) ( $fields['max_tokens'] ?? $current['max_tokens'] ) ) ),
 			'business_name'    => sanitize_text_field( (string) ( $fields['business_name'] ?? '' ) ),
@@ -160,47 +138,49 @@ final class AiSettings {
 			'kb_mode'          => in_array( $fields['kb_mode'] ?? '', array( 'strict', 'balanced', 'creative' ), true ) ? $fields['kb_mode'] : 'balanced',
 			'custom_rag_enabled' => ! empty( $fields['custom_rag_enabled'] ),
 			'custom_rag_path'   => sanitize_text_field( (string) ( $fields['custom_rag_path'] ?? '' ) ),
+			'custom_base_url'   => esc_url_raw( (string) ( $fields['custom_base_url'] ?? '' ) ),
+			'custom_model'      => sanitize_text_field( (string) ( $fields['custom_model'] ?? '' ) ),
 		);
 		update_option( self::OPTION, $clean );
 	}
 
 	/**
-	 * Decrypted API key for a given provider — never echoed to the browser,
-	 * only used server-side to build that provider's Authorization header.
+	 * Decrypted credential value — never echoed to the browser, only used
+	 * server-side by the managed AI transport.
 	 */
-	public static function api_key( string $provider ): string {
-		$stored = get_option( self::key_option( $provider ), '' );
+	public static function api_key( string $key_id ): string {
+		$stored = get_option( self::key_option( $key_id ), '' );
 		return is_string( $stored ) ? Crypto::decrypt( $stored, self::CRYPTO_CONTEXT ) : '';
 	}
 
-	public static function has_api_key( string $provider ): bool {
-		return '' !== self::api_key( $provider );
+	public static function has_api_key( string $key_id ): bool {
+		return '' !== self::api_key( $key_id );
 	}
 
-	public static function set_api_key( string $provider, string $key ): void {
+	public static function set_api_key( string $key_id, string $key ): void {
 		$key = trim( $key );
 		if ( '' === $key ) {
-			delete_option( self::key_option( $provider ) );
+			delete_option( self::key_option( $key_id ) );
 			return;
 		}
-		update_option( self::key_option( $provider ), Crypto::encrypt( $key, self::CRYPTO_CONTEXT ) );
+		update_option( self::key_option( $key_id ), Crypto::encrypt( $key, self::CRYPTO_CONTEXT ), false );
 	}
 
-	public static function clear_api_key( string $provider ): void {
-		delete_option( self::key_option( $provider ) );
+	public static function clear_api_key( string $key_id ): void {
+		delete_option( self::key_option( $key_id ) );
 	}
 
 	/**
 	 * A masked hint for the settings screen — never the real key.
 	 */
-	public static function masked_key( string $provider ): string {
-		if ( ! self::has_api_key( $provider ) ) {
+	public static function masked_key( string $key_id ): string {
+		if ( ! self::has_api_key( $key_id ) ) {
 			return '';
 		}
 		return str_repeat( '•', 20 );
 	}
 
-	private static function key_option( string $provider ): string {
-		return self::KEY_OPTION_BASE . sanitize_key( $provider );
+	private static function key_option( string $key_id ): string {
+		return self::KEY_OPTION_BASE . sanitize_key( $key_id );
 	}
 }

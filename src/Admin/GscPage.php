@@ -24,7 +24,9 @@ final class GscPage {
 		add_action( 'admin_post_seoistic_gsc_oauth_callback', array( $this, 'oauth_callback' ) );
 		add_action( 'admin_post_seoistic_gsc_select_site', array( $this, 'select_site' ) );
 		add_action( 'admin_post_seoistic_gsc_disconnect', array( $this, 'disconnect' ) );
+		add_action( 'admin_post_seoistic_gsc_force_reauth', array( $this, 'force_reauth' ) );
 		add_action( 'wp_ajax_seoistic_gsc_inspect_url', array( $this, 'ajax_inspect_url' ) );
+		add_action( 'wp_ajax_seoistic_gsc_test_connection', array( $this, 'ajax_test_connection' ) );
 	}
 
 	public function menu(): void {
@@ -40,8 +42,22 @@ final class GscPage {
 			'seoistic-gsc',
 			'SeoisticGsc',
 			array(
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'seoistic_gsc_inspect' ),
+				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+				'nonce'       => wp_create_nonce( 'seoistic_gsc_inspect' ),
+				'healthNonce' => wp_create_nonce( 'seoistic_gsc_health' ),
+				'i18n'        => array(
+					'inspectionFailed' => __( 'Inspection failed.', 'seoistic' ),
+					'noInspectionData' => __( 'No inspection data returned.', 'seoistic' ),
+					'verdict'          => __( 'Verdict:', 'seoistic' ),
+					'coverage'         => __( 'Coverage:', 'seoistic' ),
+					'lastCrawled'      => __( 'Last crawled:', 'seoistic' ),
+					'robotsTxt'        => __( 'robots.txt:', 'seoistic' ),
+					'unknown'          => __( 'unknown', 'seoistic' ),
+					'healthy'          => __( 'Connection healthy: OAuth, property access, and home URL match all passed.', 'seoistic' ),
+					'propertyMismatch' => __( 'OAuth works, but the selected property does not match this site URL.', 'seoistic' ),
+					'accessDenied'     => __( 'Google returned access_denied. Add the connecting Google account as an OAuth Test User, publish the app if appropriate, then force re-authentication.', 'seoistic' ),
+					'connectionFailed' => __( 'Connection failed.', 'seoistic' ),
+				),
 			)
 		);
 	}
@@ -53,12 +69,15 @@ final class GscPage {
 
 		View::header( 'seoistic-gsc', __( 'Search Console', 'seoistic' ), __( 'Real indexing/coverage status and query/click data from Google Search Console — read-only, refreshed on demand.', 'seoistic' ) );
 
-		if ( ! empty( $_GET['seoistic_gsc_error'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$error_code = isset( $_GET['seoistic_gsc_error'] ) ? sanitize_key( wp_unslash( $_GET['seoistic_gsc_error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( 'access_denied' === $error_code ) {
+			$this->render_access_denied_card();
+		} elseif ( '' !== $error_code ) {
 			echo '<div class="seoistic-tool-result is-error" style="display:block;">' . esc_html(
 				sprintf(
 					/* translators: %s: the OAuth error code Google returned. */
 					__( 'Google Search Console authorization was not completed (%s). You can try connecting again.', 'seoistic' ),
-					sanitize_key( wp_unslash( $_GET['seoistic_gsc_error'] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+					$error_code
 				)
 			) . '</div>';
 		}
@@ -83,13 +102,9 @@ final class GscPage {
 		echo '<ol style="margin:0 0 16px 20px;">';
 		echo '<li>' . esc_html__( 'Go to the Google Cloud Console → APIs & Services → Credentials.', 'seoistic' ) . '</li>';
 		echo '<li>' . esc_html__( 'Create an OAuth 2.0 Client ID of type "Web application".', 'seoistic' ) . '</li>';
-		echo '<li>' . esc_html(
-			sprintf(
-				/* translators: %s: the redirect URI to paste into Google Cloud Console. */
-				__( 'Add this exact Authorized redirect URI: %s', 'seoistic' ),
-				GscClient::redirect_uri()
-			)
-		) . ' <code>' . esc_html( GscClient::redirect_uri() ) . '</code></li>';
+		echo '<li>' . esc_html__( 'Add this exact Authorized redirect URI:', 'seoistic' ) . ' ';
+		$this->render_redirect_copy();
+		echo '</li>';
 		echo '<li>' . esc_html__( 'Enable the "Google Search Console API" for the project.', 'seoistic' ) . '</li>';
 		echo '<li>' . esc_html__( 'Paste the Client ID and Client Secret below.', 'seoistic' ) . '</li>';
 		echo '</ol>';
@@ -119,6 +134,9 @@ final class GscPage {
 		echo '<h2>' . esc_html__( 'Step 3 — Choose a property', 'seoistic' ) . '</h2>';
 
 		if ( ! $result['success'] ) {
+			if ( ! empty( $result['access_denied'] ) ) {
+				$this->render_access_denied_card();
+			}
 			echo '<div class="seoistic-tool-result is-error" style="display:block;">' . esc_html( $result['error'] ?? __( 'Could not list Search Console properties.', 'seoistic' ) ) . '</div>';
 			echo '</div>';
 			return;
@@ -148,6 +166,7 @@ final class GscPage {
 		echo '</div>';
 
 		echo '<div class="seoistic-table-wrap" style="padding:18px 20px;">';
+		echo '<div class="seoistic-gsc-health"><button type="button" class="seoistic-btn seoistic-btn-primary" id="seoistic-gsc-health-btn">' . esc_html__( 'Test connection', 'seoistic' ) . '</button><div class="seoistic-tool-result" id="seoistic-gsc-health-result" role="status" aria-live="polite"></div></div>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin-bottom:10px;">';
 		echo '<input type="hidden" name="action" value="seoistic_gsc_disconnect">';
 		wp_nonce_field( 'seoistic_gsc_disconnect' );
@@ -169,6 +188,9 @@ final class GscPage {
 	 */
 	private function render_analytics_table( GscClient $client, string $title, array $dimensions, string $key_label ): void {
 		$result = $client->search_analytics( array( 'dimensions' => $dimensions, 'row_limit' => 20 ) );
+		if ( ! $result['success'] && ! empty( $result['access_denied'] ) ) {
+			$this->render_access_denied_card();
+		}
 
 		echo '<div class="seoistic-section-title">' . esc_html( $title ) . '</div>';
 		echo '<div class="seoistic-table-wrap">';
@@ -191,6 +213,50 @@ final class GscPage {
 			echo '<td>' . esc_html( (string) round( (float) ( $row['position'] ?? 0 ), 1 ) ) . '</td></tr>';
 		}
 		echo '</tbody></table></div>';
+	}
+
+	private function render_redirect_copy(): void {
+		$redirect_uri = GscClient::redirect_uri();
+		echo '<input class="seoistic-copy-value" id="seoistic-gsc-redirect-uri" type="text" readonly value="' . esc_url( $redirect_uri ) . '"> ';
+		echo '<button type="button" class="button" data-seoistic-copy="#seoistic-gsc-redirect-uri">' . esc_html__( 'Copy', 'seoistic' ) . '</button>';
+	}
+
+	private function render_force_reauth_form(): void {
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="seoistic_gsc_force_reauth">';
+		wp_nonce_field( 'seoistic_gsc_force_reauth' );
+		echo '<button type="submit" class="seoistic-btn seoistic-btn-primary" data-seoistic-confirm="' . esc_attr__( 'Clear Search Console tokens and start authorization again?', 'seoistic' ) . '">' . esc_html__( 'Force re-authentication', 'seoistic' ) . '</button>';
+		echo '</form>';
+	}
+
+	private function render_access_denied_card(): void {
+		$match = GscSettings::property_match();
+		echo '<section class="seoistic-table-wrap seoistic-gsc-recovery" style="padding:18px 20px;" aria-labelledby="seoistic-gsc-recovery-title">';
+		echo '<h2 id="seoistic-gsc-recovery-title">' . esc_html__( 'Recovery: Google returned access_denied (403)', 'seoistic' ) . '</h2>';
+		echo '<ol class="seoistic-gsc-recovery-steps">';
+		echo '<li><strong>' . esc_html__( 'Add a Test User', 'seoistic' ) . '</strong><br>' . esc_html__( 'In Google Cloud Console, open APIs & Services → OAuth consent screen → Audience. Under Test users, click + Add users, then add the exact Google account used to connect SEOISTIC.', 'seoistic' ) . ' <a href="' . esc_url( 'https://console.cloud.google.com/apis/credentials/consent' ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Open OAuth consent screen', 'seoistic' ) . '</a></li>';
+		echo '<li><strong>' . esc_html__( 'Publish the app for permanent access', 'seoistic' ) . '</strong><br>' . esc_html__( 'Testing mode and test-user access expire. After setup is verified, use Publish app on the OAuth consent screen. Google may show an unverified-scopes warning until verification completes; the requested scope is read-only.', 'seoistic' ) . '</li>';
+		echo '<li><strong>' . esc_html__( 'Check the redirect URI', 'seoistic' ) . '</strong><br>';
+		$this->render_redirect_copy();
+		echo '</li>';
+		echo '<li><strong>' . esc_html__( 'Check the property match', 'seoistic' ) . '</strong><br>';
+		echo wp_kses(
+			sprintf(
+				/* translators: 1: selected Search Console property, 2: WordPress home URL. */
+				esc_html__( 'Selected property: %1$s. This WordPress home URL: %2$s. A Domain property must contain this host; a URL-prefix property must match the scheme, host, and path.', 'seoistic' ),
+				'<code>' . esc_html( GscSettings::site_url() ?: __( 'none selected', 'seoistic' ) ) . '</code>',
+				'<code>' . esc_html( home_url( '/' ) ) . '</code>'
+			),
+			array( 'code' => array() )
+		);
+		if ( false === $match ) {
+			echo ' <span class="seoistic-badge bad">' . esc_html__( 'Mismatch found', 'seoistic' ) . '</span>';
+		}
+		echo '</li>';
+		echo '<li><strong>' . esc_html__( 'Clear tokens and reconnect', 'seoistic' ) . '</strong><br>';
+		$this->render_force_reauth_form();
+		echo '</li>';
+		echo '</ol></section>';
 	}
 
 	public function save_client(): void {
@@ -225,8 +291,12 @@ final class GscPage {
 			wp_die( esc_html__( 'Google did not return an authorization code.', 'seoistic' ) );
 		}
 
-		( new GscClient() )->exchange_code( $code );
-		wp_safe_redirect( admin_url( 'admin.php?page=seoistic-gsc' ) );
+		$result = ( new GscClient() )->exchange_code( $code );
+		$query  = array();
+		if ( ! $result['success'] ) {
+			$query['seoistic_gsc_error'] = $result['error_code'] ?? 'exchange_failed';
+		}
+		wp_safe_redirect( add_query_arg( $query, admin_url( 'admin.php?page=seoistic-gsc' ) ) );
 		exit;
 	}
 
@@ -248,6 +318,15 @@ final class GscPage {
 		exit;
 	}
 
+	public function force_reauth(): void {
+		if ( ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'seoistic_gsc_force_reauth' ) ) {
+			wp_die( esc_html__( 'Permission denied.', 'seoistic' ) );
+		}
+		GscSettings::clear_tokens();
+		wp_safe_redirect( admin_url( 'admin.php?page=seoistic-gsc' ) );
+		exit;
+	}
+
 	public function ajax_inspect_url(): void {
 		check_ajax_referer( 'seoistic_gsc_inspect', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -261,8 +340,32 @@ final class GscPage {
 
 		$result = ( new GscClient() )->inspect_url( $url );
 		if ( ! $result['success'] ) {
-			wp_send_json_error( array( 'message' => $result['error'] ?? __( 'Inspection failed.', 'seoistic' ) ) );
+			wp_send_json_error(
+				array(
+					'message'       => $result['error'] ?? __( 'Inspection failed.', 'seoistic' ),
+					'error_code'    => $result['error_code'] ?? '',
+					'access_denied' => ! empty( $result['access_denied'] ),
+				)
+			);
 		}
 		wp_send_json_success( array( 'data' => $result['data'] ?? array() ) );
+	}
+
+	public function ajax_test_connection(): void {
+		check_ajax_referer( 'seoistic_gsc_health', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'seoistic' ) ), 403 );
+		}
+
+		$result = ( new GscClient() )->test_connection();
+		if ( ! $result['success'] ) {
+			wp_send_json_error( array(
+				'message'       => $result['error'] ?? __( 'Connection failed.', 'seoistic' ),
+				'error_code'    => $result['error_code'] ?? '',
+				'access_denied' => ! empty( $result['access_denied'] ),
+			), 200 );
+		}
+
+		wp_send_json_success( $result['data'] ?? array() );
 	}
 }

@@ -1,183 +1,149 @@
-/**
- * Business Automator Admin Page
- */
+(function () {
+  'use strict';
 
-document.addEventListener('DOMContentLoaded', function () {
-	// Tab switching
-	const tabLinks = document.querySelectorAll('.seoistic-tab-link');
-	const tabPanels = document.querySelectorAll('.seoistic-tab-panel');
+  const settings = window.SeoisticAutomator || {};
+  const strings = settings.strings || {};
 
-	tabLinks.forEach(link => {
-		link.addEventListener('click', function (e) {
-			e.preventDefault();
+  function text(value, fallback = '') {
+    return typeof value === 'string' && value ? value : fallback;
+  }
 
-			// Remove active class from all
-			tabLinks.forEach(l => l.classList.remove('active'));
-			tabPanels.forEach(p => p.classList.remove('active'));
+  function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+  }
 
-			// Add active class to clicked tab
-			this.classList.add('active');
-			const target = this.getAttribute('href').substring(1);
-			document.getElementById(target).classList.add('active');
-		});
-	});
+  function request(path, body = {}) {
+    return window.wp.apiFetch({
+      path,
+      method: 'POST',
+      data: Object.assign({ nonce: settings.nonce }, body)
+    });
+  }
 
-	// Test connection button
-	const testBtn = document.getElementById('test-connection-btn');
-	if (testBtn) {
-		testBtn.addEventListener('click', testConnection);
-	}
+  function statusLabel(status) {
+    const labels = {
+      running: 'Running',
+      completed: 'Completed',
+      awaiting_approval: strings.awaiting || 'Awaiting approval',
+      failed: 'Failed',
+      skipped: 'Skipped',
+      approved: strings.approved || 'Approved',
+      auto_approved: 'Auto-approved',
+      locked: 'Locked'
+    };
+    return labels[status] || status;
+  }
 
-	// Deploy template buttons
-	const deployBtns = document.querySelectorAll('.deploy-template');
-	deployBtns.forEach(btn => {
-		btn.addEventListener('click', function () {
-			const templateId = this.dataset.templateId;
-			deployTemplate(templateId);
-		});
-	});
+  function render() {
+    const root = document.getElementById('seoistic-automator-root');
+    if (!root) return;
+    root.className = 'seoistic-automator';
+    root.innerHTML = root.dataset.tab === 'history' ? renderHistory() : renderRecipes();
+    bindEvents(root);
+  }
 
-	// Load automations
-	loadAutomations();
-});
+  function renderRecipes() {
+    const rows = (settings.recipes || []).map((recipe) => `
+      <tr data-recipe="${escapeHtml(recipe.id)}">
+        <th scope="row">${escapeHtml(recipe.name)}</th>
+        <td>${escapeHtml(recipe.description)}</td>
+        <td>${escapeHtml(recipe.trigger)}${recipe.trigger === 'schedule' ? ' · ' + escapeHtml(recipe.schedule) : ''}</td>
+        <td>
+          <label><input type="checkbox" class="automator-enabled" ${recipe.enabled ? 'checked' : ''}> ${escapeHtml('Enabled')}</label>
+          <label><input type="checkbox" class="automator-auto" ${recipe.auto_apply ? 'checked' : ''}> ${escapeHtml('Auto-apply')}</label>
+          ${recipe.trigger === 'schedule' ? `<select class="automator-schedule">${['daily', 'weekly'].map((value) => `<option value="${value}" ${recipe.schedule === value ? 'selected' : ''}>${value}</option>`).join('')}</select>` : ''}
+        </td>
+        <td><button type="button" class="button" data-run="${escapeHtml(recipe.id)}">${escapeHtml(strings.run || 'Run')}</button></td>
+      </tr>`).join('');
 
-/**
- * Test connection to Business Automator
- */
-function testConnection() {
-	const url = document.getElementById('seoistic_automator_url').value;
-	const token = document.getElementById('seoistic_automator_api_token').value;
+    return `
+      <div class="seoistic-card seoistic-automator-card">
+        <div class="seoistic-notice" data-status="idle" hidden></div>
+        <label class="automator-email"><strong>${escapeHtml('Notification email')}</strong>
+          <input class="regular-text" type="email" data-email value="${escapeHtml((settings.settings || {}).notify_email || '')}" placeholder="${escapeHtml('Site admin email')}">
+        </label>
+        <div class="table-responsive">
+          <table class="widefat striped">
+            <thead><tr><th>${escapeHtml('Recipe')}</th><th>${escapeHtml('Purpose')}</th><th>${escapeHtml('Trigger')}</th><th>${escapeHtml('Options')}</th><th>${escapeHtml('Actions')}</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }
 
-	if (!url || !token) {
-		showStatus('Please enter both URL and API token', 'error');
-		return;
-	}
+  function renderHistory() {
+    const runs = settings.history || [];
+    if (!runs.length) return `<div class="seoistic-card"><p>${escapeHtml('No automation runs recorded yet.')}</p></div>`;
+    return runs.map((run) => `
+      <details class="seoistic-card seoistic-run" data-run-id="${escapeHtml(run.run_id)}">
+        <summary>
+          <strong>${escapeHtml(run.recipe_name)}</strong>
+          <span class="seoistic-badge">${escapeHtml(statusLabel(run.status))}</span>
+          ${run.auto_applied ? `<span class="seoistic-badge">${escapeHtml('Auto-applied')}</span>` : ''}
+          <span>${escapeHtml(run.started_at || '')}</span>
+          ${run.status === 'awaiting_approval' ? `<button type="button" class="button button-primary" data-approve="${escapeHtml(run.run_id)}">${escapeHtml(strings.approve || 'Approve & apply')}</button>` : ''}
+        </summary>
+        <div class="seoistic-run-steps">${(run.steps || []).map((step) => renderStep(step)).join('')}</div>
+      </details>`).join('');
+  }
 
-	const statusDiv = document.getElementById('connection-status');
-	statusDiv.style.display = 'block';
-	statusDiv.innerHTML = '<p>Testing connection...</p>';
+  function renderStep(step) {
+    const details = step.data || {};
+    return `
+      <section class="seoistic-step">
+        <header><strong>${escapeHtml(step.id)}</strong><span>${escapeHtml(statusLabel(step.status))}</span></header>
+        ${details.diff_preview ? `<pre>${Object.entries(details.diff_preview).map(([key, diff]) => escapeHtml(key) + '\n' + escapeHtml(diff)).join('\n\n')}</pre>` : ''}
+        ${details.error ? `<p class="error">${escapeHtml(details.error)}</p>` : ''}
+        ${step.id === 'apply' ? `<p>${escapeHtml(details.changed ? 'Changes applied.' : 'No changes applied.')}</p>` : ''}
+      </section>`;
+  }
 
-	wp.apiFetch({
-		path: '/seoistic/v1/automations/test-connection',
-		method: 'POST',
-		data: {
-			url: url,
-			token: token,
-		},
-	})
-		.then(response => {
-			if (response.success) {
-				showStatus('✓ Connection successful!', 'success');
-			} else {
-				showStatus('✗ Connection failed: ' + response.message, 'error');
-			}
-		})
-		.catch(error => {
-			showStatus('Error: ' + error.message, 'error');
-		});
-}
+  function bindEvents(root) {
+    root.querySelectorAll('[data-run]').forEach((button) => button.addEventListener('click', () => triggerRun(button)));
+    root.querySelectorAll('[data-approve]').forEach((button) => button.addEventListener('click', () => approveRun(button)));
+    root.querySelectorAll('[data-recipe]').forEach((row) => {
+      row.querySelectorAll('input, select').forEach((control) => control.addEventListener('change', saveRecipe(row)));
+    });
+  }
 
-/**
- * Load and display automations
- */
-function loadAutomations() {
-	const list = document.getElementById('automations-list');
-	if (!list) return;
+  function triggerRun(button) {
+    button.disabled = true;
+    request('/seoistic/v1/business-automator/run', { recipe_id: button.dataset.run })
+      .then((response) => showStatus('Run created: ' + statusLabel((response.data || {}).status), 'success'))
+      .catch((error) => showStatus(error.message, 'error'))
+      .finally(() => { button.disabled = false; });
+  }
 
-	wp.apiFetch({
-		path: '/seoistic/v1/automations',
-		method: 'GET',
-	})
-		.then(automations => {
-			if (automations.length === 0) {
-				list.innerHTML = '<p>No automations created yet. Deploy a template to get started.</p>';
-			} else {
-				let html = '<table class="widefat"><thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+  function approveRun(button) {
+    if (!window.confirm(strings.confirm || 'Apply this approved automation change?')) return;
+    button.disabled = true;
+    request(`/seoistic/v1/business-automator/runs/${encodeURIComponent(button.dataset.approve)}/approve`)
+      .then(() => showStatus(strings.approved || 'Approved', 'success'))
+      .catch((error) => showStatus(error.message, 'error'))
+      .finally(() => { button.disabled = false; });
+  }
 
-				automations.forEach(automation => {
-					const statusClass = automation.enabled ? 'enabled' : 'disabled';
-					const statusText = automation.enabled ? 'Active' : 'Inactive';
+  function saveRecipe(row) {
+    const recipe = (settings.recipes || []).find((item) => item.id === row.dataset.recipe) || {};
+    request(`/seoistic/v1/business-automator/recipes/${encodeURIComponent(row.dataset.recipe)}`, {
+      enabled: row.querySelector('.automator-enabled').checked,
+      auto_apply: row.querySelector('.automator-auto').checked,
+      schedule: row.querySelector('.automator-schedule') ? row.querySelector('.automator-schedule').value : 'weekly',
+      notify_email: document.querySelector('[data-email]') ? document.querySelector('[data-email]').value : ''
+    })
+      .then(() => showStatus('Recipe saved.', 'success'))
+      .catch((error) => showStatus(error.message, 'error'));
+  }
 
-					html += `
-						<tr>
-							<td>${escapeHtml(automation.name)}</td>
-							<td>${escapeHtml(automation.type)}</td>
-							<td><span class="status ${statusClass}">${statusText}</span></td>
-							<td>
-								<button class="button button-small" onclick="editAutomation('${automation.id}')">Edit</button>
-								<button class="button button-small" onclick="deleteAutomation('${automation.id}')">Delete</button>
-							</td>
-						</tr>
-					`;
-				});
+  function showStatus(message, type) {
+    const notice = document.querySelector('[data-status]');
+    if (!notice) return;
+    notice.hidden = false;
+    notice.className = `seoistic-notice notice notice-${type === 'success' ? 'success' : 'error'}`;
+    notice.textContent = type === 'success' ? message : `${strings.error || 'Error'}: ${message}`;
+  }
 
-				html += '</tbody></table>';
-				list.innerHTML = html;
-			}
-		})
-		.catch(error => {
-			list.innerHTML = '<p style="color: red;">Error loading automations: ' + escapeHtml(error.message) + '</p>';
-		});
-}
-
-/**
- * Deploy a template
- */
-function deployTemplate(templateId) {
-	// In a real implementation, this would show a modal to configure the template
-	// For now, just create a basic automation from the template
-	alert('Deploying template: ' + templateId + '\n\nA configuration dialog will appear here.');
-}
-
-/**
- * Edit automation
- */
-function editAutomation(automationId) {
-	alert('Editing automation: ' + automationId);
-}
-
-/**
- * Delete automation
- */
-function deleteAutomation(automationId) {
-	if (!confirm('Are you sure you want to delete this automation?')) {
-		return;
-	}
-
-	wp.apiFetch({
-		path: '/seoistic/v1/automations/' + automationId,
-		method: 'DELETE',
-	})
-		.then(() => {
-			showStatus('Automation deleted', 'success');
-			loadAutomations();
-		})
-		.catch(error => {
-			showStatus('Error: ' + error.message, 'error');
-		});
-}
-
-/**
- * Show status message
- */
-function showStatus(message, type) {
-	const statusDiv = document.getElementById('connection-status');
-	statusDiv.style.display = 'block';
-
-	const className = type === 'success' ? 'notice-success' : 'notice-error';
-	statusDiv.innerHTML = `<div class="notice ${className}"><p>${escapeHtml(message)}</p></div>`;
-
-	// Auto-hide after 5 seconds
-	setTimeout(() => {
-		statusDiv.style.display = 'none';
-	}, 5000);
-}
-
-/**
- * Escape HTML special characters
- */
-function escapeHtml(text) {
-	const div = document.createElement('div');
-	div.textContent = text;
-	return div.innerHTML;
-}
+  document.addEventListener('DOMContentLoaded', render);
+}());

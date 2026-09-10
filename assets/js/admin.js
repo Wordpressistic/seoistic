@@ -28,7 +28,9 @@
 		} ).then( function ( r ) {
 			return r.json().then( function ( json ) {
 				if ( ! r.ok ) {
-					throw new Error( ( json && json.message ) || 'Request failed' );
+					var err = new Error( ( json && json.message ) || 'Request failed' );
+					err.data = json && json.data ? json.data : {};
+					throw err;
 				}
 				return json;
 			} );
@@ -47,7 +49,9 @@
 		} ).then( function ( r ) {
 			return r.json().then( function ( json ) {
 				if ( ! r.ok ) {
-					throw new Error( ( json && json.message ) || 'Request failed' );
+					var err = new Error( ( json && json.message ) || 'Request failed' );
+					err.data = json && json.data ? json.data : {};
+					throw err;
 				}
 				return json;
 			} );
@@ -90,6 +94,11 @@
 			}, reducedMotion ? 0 : 220 );
 		}, 3500 );
 	};
+
+	function estimateTotal( processed, percent ) {
+		var ratio = Math.max( 0.01, Math.min( 1, ( Number( percent ) || 1 ) / 100 ) );
+		return Math.max( processed, Math.ceil( processed / ratio ) );
+	}
 
 	document.addEventListener( 'DOMContentLoaded', function () {
 		animateCounters();
@@ -614,13 +623,17 @@
 		}
 		var source = btn.getAttribute( 'data-seoistic-import' );
 		var card = btn.closest( '.seoistic-tool-card' );
-		var progressWrap = card ? card.querySelector( '.seoistic-tool-progress' ) : null;
-		var progressBar = card ? card.querySelector( '.seoistic-tool-progress-bar' ) : null;
 		var resultBox = card ? card.querySelector( '.seoistic-tool-result' ) : null;
+		var tracker = window.auroraTracker && card ? window.auroraTracker( card, {
+			queued: seoisticI18n( 'queued', 'Queued' ),
+			progress: seoisticI18n( 'processing', 'Processing' ),
+			done: seoisticI18n( 'done', 'Done' ),
+			queuedMessage: seoisticI18n( 'working', 'Working…' )
+		} ) : null;
 
 		btn.disabled = true;
-		if ( progressWrap ) {
-			progressWrap.style.display = 'block';
+		if ( tracker ) {
+			tracker.start();
 		}
 
 		var body = new URLSearchParams();
@@ -641,24 +654,34 @@
 			.then( function ( json ) {
 				if ( ! json || ! json.success ) {
 					showResult( resultBox, false, ( json && json.data && json.data.message ) || seoisticI18n( 'importFailed', 'Import failed.' ) );
+					if ( tracker ) {
+						tracker.fail( ( json && json.data && json.data.message ) || seoisticI18n( 'importFailed', 'Import failed.' ) );
+					}
 					btn.disabled = false;
 					return;
 				}
 				var data = json.data;
 				importedSoFar += data.imported;
-				if ( progressBar ) {
-					progressBar.style.width = Math.round( data.percent ) + '%';
-				}
-				if ( data.done ) {
-					showResult( resultBox, true, data.message || ( importedSoFar + ' items imported.' ) );
+					if ( tracker ) {
+						tracker.state( 'progress' );
+						tracker.progress( data.next_offset, estimateTotal( data.next_offset, data.percent ) );
+					}
+					if ( data.done ) {
+						if ( tracker ) {
+							tracker.finish( data.message || ( importedSoFar + ' items imported.' ) );
+						}
+						showResult( resultBox, true, data.message || ( importedSoFar + ' items imported.' ) );
 					btn.disabled = false;
 				} else {
 					runImportBatch( btn, data.next_offset, importedSoFar );
 				}
 			} )
-			.catch( function () {
-				showResult( resultBox, false, seoisticI18n( 'importFailed', 'Import failed.' ) );
-				btn.disabled = false;
+				.catch( function () {
+					showResult( resultBox, false, seoisticI18n( 'importFailed', 'Import failed.' ) );
+					if ( tracker ) {
+						tracker.fail( seoisticI18n( 'importFailed', 'Import failed.' ) );
+					}
+					btn.disabled = false;
 			} );
 	}
 
@@ -670,6 +693,9 @@
 		box.classList.toggle( 'is-success', success );
 		box.classList.toggle( 'is-error', ! success );
 		box.textContent = message;
+		if ( window.seoisticToast ) {
+			window.seoisticToast( message, success ? 'success' : 'error' );
+		}
 	}
 
 	/* ---------------------------------------------------------------- */
@@ -684,21 +710,25 @@
 			if ( btn.disabled ) {
 				return;
 			}
-			var progressWrap = document.getElementById( 'seoistic-audit-progress' );
-			var progressBar = progressWrap ? progressWrap.querySelector( '.seoistic-tool-progress-bar' ) : null;
 			var resultBox = document.getElementById( 'seoistic-audit-result' );
+			var tracker = window.auroraTracker ? window.auroraTracker( document.querySelector( '.seoistic-hero' ), {
+				queued: seoisticI18n( 'queued', 'Queued' ),
+				progress: seoisticI18n( 'processing', 'Processing' ),
+				done: seoisticI18n( 'done', 'Done' ),
+				queuedMessage: seoisticI18n( 'working', 'Working…' )
+			} ) : null;
 			btn.disabled = true;
-			if ( progressWrap ) {
-				progressWrap.style.display = 'block';
+			if ( tracker ) {
+				tracker.start();
 			}
 			if ( resultBox ) {
 				resultBox.style.display = 'none';
 			}
-			runAuditBatch( btn, 0, progressBar, resultBox );
+			runAuditBatch( btn, 0, resultBox, tracker );
 		} );
 	}
 
-	function runAuditBatch( btn, offset, progressBar, resultBox ) {
+	function runAuditBatch( btn, offset, resultBox, tracker ) {
 		if ( ! window.SeoisticAdmin || ! window.SeoisticAdmin.ajaxUrl ) {
 			return;
 		}
@@ -719,26 +749,48 @@
 			.then( function ( json ) {
 				if ( ! json || ! json.success ) {
 					showResult( resultBox, false, ( json && json.data && json.data.message ) || 'Audit failed.' );
+					if ( tracker ) {
+						tracker.fail( ( json && json.data && json.data.message ) || 'Audit failed.' );
+					}
 					btn.disabled = false;
 					return;
 				}
 				var data = json.data;
-				if ( progressBar ) {
-					progressBar.style.width = Math.round( data.percent ) + '%';
+				if ( tracker ) {
+					tracker.state( 'progress' );
+					tracker.progress( data.next_offset, estimateTotal( data.next_offset, data.percent ) );
 				}
 				if ( data.done ) {
+					if ( tracker ) {
+						tracker.finish( data.message );
+					}
 					showResult( resultBox, true, data.message );
 					btn.disabled = false;
 					setTimeout( function () {
 						window.location.reload();
-					}, 900 );
+					}, reducedMotion ? 0 : 400 );
 				} else {
-					runAuditBatch( btn, data.next_offset, progressBar, resultBox );
+						runAuditBatch( btn, data.next_offset, resultBox, tracker );
 				}
 			} )
-			.catch( function () {
-				showResult( resultBox, false, 'Audit failed.' );
+				.catch( function () {
+					showResult( resultBox, false, 'Audit failed.' );
+					if ( tracker ) {
+						tracker.fail( 'Audit failed.' );
+					}
 				btn.disabled = false;
 			} );
 	}
 } )();
+
+/* AI REST errors carry structured upgrade-card data from WPisticAiClient. */
+window.seoisticAiError = function ( error ) {
+	var data = error && error.data ? error.data : {};
+	return {
+		message: ( error && error.message ) || 'AI request failed.',
+		upgrade: !! data.upgrade_card,
+		creditsLeft: parseInt( data.credits_left, 10 ) || 0,
+		plan: data.plan || '',
+		usage: data.usage || {}
+	};
+};

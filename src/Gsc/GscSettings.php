@@ -23,6 +23,7 @@ final class GscSettings {
 	private const CLIENT_SECRET_OPTION = 'seoistic_gsc_client_secret_enc';
 	private const REFRESH_TOKEN_OPTION = 'seoistic_gsc_refresh_token_enc';
 	private const OAUTH_STATE_TRANSIENT = 'seoistic_gsc_oauth_state';
+	private const PROPERTY_MISMATCH_TRANSIENT = 'seoistic_gsc_property_mismatch';
 
 	/**
 	 * @return array{client_id:string, site_url:string}
@@ -83,14 +84,35 @@ final class GscSettings {
 		update_option( self::REFRESH_TOKEN_OPTION, Crypto::encrypt( $token, self::CRYPTO_CONTEXT ) );
 	}
 
+	public static function clear_tokens(): void {
+		delete_transient( 'seoistic_gsc_access_token' );
+		update_option( self::REFRESH_TOKEN_OPTION, '' );
+		delete_transient( self::PROPERTY_MISMATCH_TRANSIENT );
+	}
+
 	public static function is_connected(): bool {
 		return '' !== self::refresh_token() && '' !== self::site_url();
 	}
 
 	public static function disconnect(): void {
-		delete_option( self::REFRESH_TOKEN_OPTION );
+		self::clear_tokens();
 		$current = self::all();
 		update_option( self::OPTION, array( 'client_id' => $current['client_id'], 'site_url' => '' ) );
+	}
+
+	public static function set_property_match( bool $matches ): void {
+		set_transient( self::PROPERTY_MISMATCH_TRANSIENT, $matches ? 'yes' : 'no', HOUR_IN_SECONDS );
+	}
+
+	public static function property_match(): ?bool {
+		$value = get_transient( self::PROPERTY_MISMATCH_TRANSIENT );
+		if ( 'yes' === $value ) {
+			return true;
+		}
+		if ( 'no' === $value ) {
+			return false;
+		}
+		return null;
 	}
 
 	/**
