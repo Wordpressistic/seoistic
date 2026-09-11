@@ -415,28 +415,59 @@ body[data-seoistic-theme="dark"] .seoistic-modal-overlay {
 .seoistic-badge.neutral, .seoistic-badge.draft { background: var(--seo-surface-hover); color: var(--seo-text-muted); }
 
 /* ------------------------------------------------------------------ */
-/* 7. Score ring                                                       */
+/* 7. Score ring — animated gradient gauge (Aurora)                     */
 /* ------------------------------------------------------------------ */
 .seoistic-ring { position: relative; display: inline-flex; align-items: center; justify-content: center; }
-.seoistic-ring svg { transform: rotate(-90deg); }
+.seoistic-ring svg { transform: rotate(-90deg); overflow: visible; }
 .seoistic-ring circle { fill: none; }
-.seoistic-ring .seoistic-ring-track { stroke: var(--seo-border); }
+.seoistic-ring .seoistic-ring-track { stroke: var(--seo-border); stroke-linecap: round; opacity: .9; }
 .seoistic-ring .seoistic-ring-fill {
 	stroke: var(--seo-score-critical); stroke-linecap: round;
-	transition: stroke-dashoffset .9s cubic-bezier(.4, 0, .2, 1), stroke .3s ease;
+	transition: stroke-dashoffset 1.05s cubic-bezier(.22, 1, .36, 1), stroke .3s ease, opacity .3s ease;
 }
-.seoistic-ring.is-good .seoistic-ring-fill { stroke: var(--seo-score-good); }
-.seoistic-ring.is-excellent .seoistic-ring-fill { stroke: var(--seo-score-excellent); }
-.seoistic-ring.is-warn .seoistic-ring-fill { stroke: var(--seo-score-warning); }
-.seoistic-ring.is-bad .seoistic-ring-fill { stroke: var(--seo-score-critical); }
-.seoistic-ring-label { position: absolute; font-weight: 800; color: var(--seo-text); font-variant-numeric: tabular-nums; }
-.seoistic-ring-sm { width: 34px; height: 34px; }
-.seoistic-ring-sm .seoistic-ring-label { font-size: 11px; }
+/* Tone glow matches the gradient arc once it lands. */
+.seoistic-ring.is-good .seoistic-ring-fill { filter: drop-shadow(0 1px 4px rgba(16, 185, 129, .35)); }
+.seoistic-ring.is-excellent .seoistic-ring-fill { filter: drop-shadow(0 1px 5px rgba(6, 182, 196, .4)); }
+.seoistic-ring.is-warn .seoistic-ring-fill { filter: drop-shadow(0 1px 4px rgba(245, 158, 11, .35)); }
+.seoistic-ring.is-bad .seoistic-ring-fill { filter: drop-shadow(0 1px 4px rgba(239, 68, 68, .35)); }
+/* No-JS / inline-gradient-unavailable fallback keeps the tone colors. */
+.seoistic-ring.is-good .seoistic-ring-fill:not([style*="url(#"]) { stroke: var(--seo-score-good); }
+.seoistic-ring.is-excellent .seoistic-ring-fill:not([style*="url(#"]) { stroke: var(--seo-score-excellent); }
+.seoistic-ring.is-warn .seoistic-ring-fill:not([style*="url(#"]) { stroke: var(--seo-score-warning); }
+.seoistic-ring.is-bad .seoistic-ring-fill:not([style*="url(#"]) { stroke: var(--seo-score-critical); }
+.seoistic-ring-label { position: absolute; font-weight: 800; color: var(--seo-text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+/* Entrance: the whole gauge scales in while the arc sweeps (JS adds is-animating). */
+.seoistic-ring.is-animating { animation: seoistic-ring-enter .45s cubic-bezier(.34, 1.4, .64, 1) both; }
+@keyframes seoistic-ring-enter {
+	from { transform: scale(.82); opacity: .35; }
+	to { transform: scale(1); opacity: 1; }
+}
+/* Landing pulse after a live re-score settles on a new value. */
+.seoistic-ring.is-landing { animation: seoistic-ring-land .5s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes seoistic-ring-land {
+	0% { transform: scale(1); }
+	45% { transform: scale(1.08); }
+	100% { transform: scale(1); }
+}
+.seoistic-ring-sm { width: 38px; height: 38px; }
+.seoistic-ring-sm .seoistic-ring-label { font-size: 12px; }
 .seoistic-ring-md { width: 56px; height: 56px; }
 .seoistic-ring-md .seoistic-ring-label { font-size: 15px; }
 .seoistic-ring-lg { width: 128px; height: 128px; }
 .seoistic-ring-lg .seoistic-ring-label { font-size: 32px; }
 .seoistic-ring-lg .seoistic-ring-label small { display: block; font-size: 11px; font-weight: 600; color: var(--seo-text-muted); text-align: center; }
+
+/* List-table score column keeps its shape on narrow admin screens. */
+.column-seoistic_score { width: 64px; }
+.wp-list-table .column-seoistic_focus_keyword { width: 12%; }
+.wp-list-table .column-seoistic_index_status { width: 96px; }
+
+/* Respect users who ask for stillness. */
+@media (prefers-reduced-motion: reduce) {
+	.seoistic-ring .seoistic-ring-fill { transition: none; }
+	.seoistic-ring.is-animating,
+	.seoistic-ring.is-landing { animation: none; }
+}
 
 /* ------------------------------------------------------------------ */
 /* 8. Dashboard hero                                                   */
@@ -1076,6 +1107,13 @@ body.rtl .seoistic-toasts { right: auto; left: 24px; }
 	.seoistic-aeo-bar { transition: none; }
 }
 .seoistic-ai-credits { background: var(--seo-surface); border: 1px solid var(--seo-border); border-radius: var(--seo-radius-card); padding: var(--seo-space-5); margin: 0 0 var(--seo-space-5); box-shadow: var(--seo-shadow-sm); }
+/* Live deduction feedback — ai.js adds is-credits-changed after an AI call. */
+.seoistic-ai-credits.is-credits-changed { animation: seoistic-credits-pulse .9s ease; border-color: var(--seo-success); }
+@keyframes seoistic-credits-pulse {
+	0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, .35); }
+	60% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+	100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
 .seoistic-ai-credits-head { display: flex; align-items: center; gap: 8px; color: var(--seo-text); margin-bottom: 10px; }
 .seoistic-ai-credits-left { margin: 0 0 4px; color: var(--seo-text); font-size: 14px; }
 .seoistic-ai-credits-left strong { font-variant-numeric: tabular-nums; }

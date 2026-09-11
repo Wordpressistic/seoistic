@@ -291,41 +291,64 @@ final class View {
 	}
 
 	/**
-	 * Pure CSS/SVG animated score ring. $size: sm|md|lg.
+	 * Gradient stop pairs per tone — the stroke sweeps through these colors so
+	 * the ring reads as a premium gauge instead of a flat circle.
+	 *
+	 * @return array<string, array<int, string>>
+	 */
+	private static function ring_gradients(): array {
+		return array(
+			'bad'       => array( '#F87171', '#EF4444' ),
+			'warn'      => array( '#FBBF24', '#F59E0B' ),
+			'good'      => array( '#34D399', '#10B981' ),
+			'excellent' => array( '#10B981', '#06B6D4' ),
+		);
+	}
+
+	/**
+	 * Animated score ring (SVG + Aurora JS). $size: sm|md|lg.
+	 *
+	 * Renders the final state server-side (no-JS sites still get a correct
+	 * ring); Aurora JS resets the arc to zero on load and sweeps it to the
+	 * score with a synchronized count-up. Each ring carries a tone gradient
+	 * and data attributes so JavaScript never has to recompute geometry.
 	 */
 	public static function score_ring( int $score, string $size = 'md', bool $show_label = true ): string {
+		static $gradient_seq = 0;
+		$gradient_seq++;
+
 		$score         = max( 0, min( 100, $score ) );
 		$tone          = self::ring_tone( $score );
+		$gradient_id   = 'seoistic-ring-grad-' . $gradient_seq;
 		$radius        = 'sm' === $size ? 14 : ( 'lg' === $size ? 56 : 22 );
 		$stroke        = 'sm' === $size ? 3 : ( 'lg' === $size ? 10 : 6 );
 		$box           = ( $radius + $stroke ) * 2;
+		$center        = $box / 2;
 		$circumference = 2 * M_PI * $radius;
 		$offset        = $circumference * ( 1 - $score / 100 );
 
-		$label = $show_label ? '<span class="seoistic-ring-label">' . (int) $score . ( 'lg' === $size ? '<small>' . esc_html__( '/ 100', 'seoistic' ) . '</small>' : '' ) . '</span>' : '';
-		$score_value = (int) $score;
+		$stops = self::ring_gradients()[ $tone ];
+		$num   = '<span class="seoistic-ring-num">' . (int) $score . '</span>';
+		$label = $show_label ? '<span class="seoistic-ring-label">' . $num . ( 'lg' === $size ? '<small>' . esc_html__( '/ 100', 'seoistic' ) . '</small>' : '' ) . '</span>' : '';
 
-		return sprintf(
-			'<span class="seoistic-ring seoistic-ring-%1$s is-%2$s" role="img" aria-label="%3$s" data-aurora-score="%10$d">'
-			. '<svg width="%4$d" height="%4$d" viewBox="0 0 %4$d %4$d" aria-hidden="true">'
-			. '<circle class="seoistic-ring-track" cx="%5$d" cy="%5$d" r="%6$d" style="stroke-width:%7$d"></circle>'
-			. '<circle class="seoistic-ring-fill" cx="%5$d" cy="%5$d" r="%6$d" style="stroke-width:%7$d;stroke-dasharray:%8$F;stroke-dashoffset:%9$F"></circle>'
-			. '</svg>%10$s</span>',
-			esc_attr( $size ),
-			esc_attr( $tone ),
-			esc_attr(
-				/* translators: %d: SEO score out of 100. */
-				sprintf( __( 'SEO score %d out of 100', 'seoistic' ), $score )
-			),
-			$box,
-			$box / 2,
-			$radius,
-			$stroke,
-			$circumference,
-			$offset,
-			$label,
-			$score_value
+		$aria = esc_attr(
+			/* translators: %d: SEO score out of 100. */
+			sprintf( __( 'SEO score %d out of 100', 'seoistic' ), $score )
 		);
+
+		return '<span class="seoistic-ring seoistic-ring-' . esc_attr( $size ) . ' is-' . esc_attr( $tone ) . '"'
+			. ' role="img" aria-label="' . $aria . '"'
+			. ' data-aurora-score="' . (int) $score . '" data-score="' . (int) $score . '"'
+			. ' data-circumference="' . esc_attr( (string) round( $circumference, 4 ) ) . '">'
+			. '<svg width="' . (int) $box . '" height="' . (int) $box . '" viewBox="0 0 ' . (int) $box . ' ' . (int) $box . '" aria-hidden="true">'
+			. '<defs><linearGradient id="' . esc_attr( $gradient_id ) . '" x1="0%" y1="0%" x2="100%" y2="100%">'
+			. '<stop offset="0%" stop-color="' . esc_attr( $stops[0] ) . '"></stop>'
+			. '<stop offset="100%" stop-color="' . esc_attr( $stops[1] ) . '"></stop>'
+			. '</linearGradient></defs>'
+			. '<circle class="seoistic-ring-track" cx="' . (int) $center . '" cy="' . (int) $center . '" r="' . (int) $radius . '" style="stroke-width:' . (int) $stroke . '"></circle>'
+			. '<circle class="seoistic-ring-fill" cx="' . (int) $center . '" cy="' . (int) $center . '" r="' . (int) $radius . '"'
+			. ' style="stroke-width:' . (int) $stroke . ';stroke-dasharray:' . esc_attr( (string) round( $circumference, 4 ) ) . ';stroke-dashoffset:' . esc_attr( (string) round( $offset, 4 ) ) . ';stroke:url(#' . esc_attr( $gradient_id ) . ')"></circle>'
+			. '</svg>' . $label . '</span>';
 	}
 
 	public static function badge( string $text, string $type = 'neutral' ): string {

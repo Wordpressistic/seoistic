@@ -248,7 +248,14 @@ final class RestController {
 			return $this->ai_error( $result );
 		}
 
-		return new WP_REST_Response( array( 'success' => true, 'data' => $result['data'] ), 200 );
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'data'    => $result['data'],
+				'usage'   => (array) ( $result['usage'] ?? array() ),
+			),
+			200
+		);
 	}
 
 	/* -------------------------------------------------------------- */
@@ -275,7 +282,14 @@ final class RestController {
 			$result['success'] = false;
 			return $this->ai_error( $result );
 		}
-		return new WP_REST_Response( array( 'success' => true, 'data' => $result['data'] ), 200 );
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'data'    => $result['data'],
+				'usage'   => (array) ( $result['usage'] ?? array() ),
+			),
+			200
+		);
 	}
 
 	/* -------------------------------------------------------------- */
