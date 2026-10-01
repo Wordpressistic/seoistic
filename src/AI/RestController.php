@@ -234,21 +234,32 @@ final class RestController {
 	/* -------------------------------------------------------------- */
 
 	private function handle_post_ai( WP_REST_Request $request, string $type ) {
-		$post_id = absint( $request->get_param( 'post_id' ) );
-		$post    = get_post( $post_id );
-		if ( ! $post ) {
-			return new WP_Error( 'seoistic_not_found', __( 'Post not found.', 'seoistic' ), array( 'status' => 404 ) );
+		try {
+			$post_id = absint( $request->get_param( 'post_id' ) );
+			$post    = get_post( $post_id );
+			if ( ! $post ) {
+				return new WP_Error( 'seoistic_not_found', __( 'Post not found.', 'seoistic' ), array( 'status' => 404 ) );
+			}
+
+			$service = new AiService();
+			$result  = $service->generate( $type, $service->page_context_from_post( $post_id ) );
+
+			if ( ! $result['success'] ) {
+				$result['success'] = false;
+				return $this->ai_error( $result );
+			}
+
+			return new WP_REST_Response(
+				array(
+					'success' => true,
+					'data'    => $result['data'],
+					'usage'   => (array) ( $result['usage'] ?? array() ),
+				),
+				200
+			);
+		} catch ( \Throwable $error ) {
+			return $this->runtime_error( $error, 'post_ai' );
 		}
-
-		$service = new AiService();
-		$result  = $service->generate( $type, $service->page_context_from_post( $post_id ) );
-
-		if ( ! $result['success'] ) {
-			$result['success'] = false;
-			return $this->ai_error( $result );
-		}
-
-		return new WP_REST_Response( array( 'success' => true, 'data' => $result['data'] ), 200 );
 	}
 
 	/* -------------------------------------------------------------- */
@@ -268,14 +279,25 @@ final class RestController {
 	}
 
 	private function generate_site_wide( string $type ) {
-		$service = new AiService();
-		$result  = $service->generate( $type, array( 'title' => get_bloginfo( 'name' ), 'url' => home_url( '/' ) ) );
+		try {
+			$service = new AiService();
+			$result  = $service->generate( $type, array( 'title' => get_bloginfo( 'name' ), 'url' => home_url( '/' ) ) );
 
-		if ( ! $result['success'] ) {
-			$result['success'] = false;
-			return $this->ai_error( $result );
+			if ( ! $result['success'] ) {
+				$result['success'] = false;
+				return $this->ai_error( $result );
+			}
+			return new WP_REST_Response(
+				array(
+					'success' => true,
+					'data'    => $result['data'],
+					'usage'   => (array) ( $result['usage'] ?? array() ),
+				),
+				200
+			);
+		} catch ( \Throwable $error ) {
+			return $this->runtime_error( $error, 'site_wide' );
 		}
-		return new WP_REST_Response( array( 'success' => true, 'data' => $result['data'] ), 200 );
 	}
 
 	/* -------------------------------------------------------------- */
@@ -354,15 +376,19 @@ final class RestController {
 	private const BULK_BATCH_SIZE = 5;
 
 	public function handle_bulk( WP_REST_Request $request, string $route ) {
-		$offset = absint( $request->get_param( 'offset' ) );
+		try {
+			$offset = absint( $request->get_param( 'offset' ) );
 
-		return match ( $route ) {
-			'bulk-meta' => $this->bulk_meta( $offset ),
-			'bulk-alt' => $this->bulk_alt( $offset ),
-			'bulk-internal-links' => $this->bulk_report( $offset, 'internal_links', 'seoistic_report_internal_links' ),
-			'bulk-aeo' => $this->bulk_report( $offset, 'aeo', 'seoistic_report_aeo' ),
-			default => new WP_Error( 'seoistic_unknown_tool', __( 'Unknown tool.', 'seoistic' ), array( 'status' => 400 ) ),
-		};
+			return match ( $route ) {
+				'bulk-meta' => $this->bulk_meta( $offset ),
+				'bulk-alt' => $this->bulk_alt( $offset ),
+				'bulk-internal-links' => $this->bulk_report( $offset, 'internal_links', 'seoistic_report_internal_links' ),
+				'bulk-aeo' => $this->bulk_report( $offset, 'aeo', 'seoistic_report_aeo' ),
+				default => new WP_Error( 'seoistic_unknown_tool', __( 'Unknown tool.', 'seoistic' ), array( 'status' => 400 ) ),
+			};
+		} catch ( \Throwable $error ) {
+			return $this->runtime_error( $error, $route );
+		}
 	}
 
 	/**
@@ -632,6 +658,29 @@ final class RestController {
 				),
 			),
 			200
+		);
+	}
+
+	/**
+	 * Convert PHP runtime failures into the same JSON contract as normal REST
+	 * errors. WordPress otherwise renders its full HTML fatal-error template,
+	 * which the AI Tools screen cannot parse and which leaks implementation
+	 * details into an admin response.
+	 */
+	private function runtime_error( \Throwable $error, string $tool ) {
+		error_log(
+			sprintf(
+				'[SEOistic] AI tool %s failed: %s (%s)',
+				sanitize_key( $tool ),
+				$error->getMessage(),
+				get_class( $error )
+			)
+		);
+
+		return new WP_Error(
+			'seoistic_ai_runtime_error',
+			__( 'SEOistic could not complete this tool. Check the AI settings and plugin error log, then try again.', 'seoistic' ),
+			array( 'status' => 500, 'tool' => sanitize_key( $tool ) )
 		);
 	}
 

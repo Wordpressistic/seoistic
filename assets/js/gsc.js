@@ -35,7 +35,7 @@
 				body: body.toString(),
 			} )
 				.then( function ( r ) {
-					return r.json();
+					return parseJsonResponse( r );
 				} )
 				.then( function ( json ) {
 					showResult( resultBox, json && json.success, gscI18n( 'inspectionFailed' ), json && json.data && json.data.data );
@@ -72,7 +72,7 @@
 				body: body.toString(),
 			} )
 				.then( function ( response ) {
-					return response.json();
+					return parseJsonResponse( response );
 				} )
 				.then( function ( json ) {
 					if ( json && json.success ) {
@@ -108,6 +108,21 @@
 
 	function gscI18n( key ) {
 		return ( window.SeoisticGsc && window.SeoisticGsc.i18n && window.SeoisticGsc.i18n[ key ] ) || '';
+	}
+
+	function parseJsonResponse( response ) {
+		return response.text().then( function ( text ) {
+			var json = null;
+			try {
+				json = text ? JSON.parse( text ) : null;
+			} catch ( parseError ) {
+				json = null;
+			}
+			if ( ! json || typeof json !== 'object' ) {
+				throw new Error( 'The server returned an invalid response.' );
+			}
+			return json;
+		} );
 	}
 
 	function formatInspection( data ) {

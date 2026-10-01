@@ -21,6 +21,8 @@ final class Robots {
 			return (string) $output;
 		}
 
+		$output = (string) $output;
+
 		$custom = trim( (string) get_option( 'seoistic_robots_rules', '' ) );
 		if ( '' !== $custom ) {
 			if ( false === stripos( $custom, 'sitemap:' ) ) {
@@ -29,6 +31,15 @@ final class Robots {
 			return $custom . "\n";
 		}
 
-		return (string) $output . "\nSitemap: " . esc_url( home_url( '/wp-sitemap.xml' ) ) . "\n";
+		/*
+		 * WP core already appends its own "Sitemap:" line while sitemaps are
+		 * enabled (5.5+), so only add ours when one isn't present — otherwise
+		 * crawlers see the same sitemap listed twice.
+		 */
+		if ( false === stripos( $output, 'sitemap:' ) ) {
+			$output .= "\nSitemap: " . esc_url( home_url( '/wp-sitemap.xml' ) );
+		}
+
+		return $output . "\n";
 	}
 }

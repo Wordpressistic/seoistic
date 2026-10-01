@@ -70,7 +70,10 @@ final class Admin {
 		wp_enqueue_style( 'seoistic-aurora', SEOISTIC_URL . 'assets/css/aurora.css', array( 'seoistic-admin' ), SEOISTIC_VERSION );
 
 		if ( $is_list_screen ) {
-			return; // List tables only need the styles.
+			// List tables animate their score rings too — aurora.js is
+			// dependency-free, so it is safe without the admin bundle.
+			wp_enqueue_script( 'seoistic-aurora', SEOISTIC_URL . 'assets/js/aurora.js', array(), SEOISTIC_VERSION, true );
+			return; // List tables don't need the rest of the admin bundle.
 		}
 
 		wp_enqueue_script( 'seoistic-admin', SEOISTIC_URL . 'assets/js/admin.js', array(), SEOISTIC_VERSION, true );

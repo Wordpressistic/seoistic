@@ -3,6 +3,54 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.6.4] - 2026-10-01
+
+### Fixed
+
+- Improve Google Search Console OAuth setup guidance for External/Production
+  apps and explain why Testing mode blocks unlisted Google accounts.
+- Isolate concurrent OAuth state tokens so one administrator cannot invalidate
+  another connection attempt.
+- Preserve an existing refresh token when Google returns an access token
+  without rotating the refresh token.
+- Include Google's granted-scope OAuth parameter and improve recovery guidance.
+
+## [1.6.3] - 2026-10-01
+
+### Fixed
+
+- Import `WP_REST_Server` in the AI Search addon so Gutenberg REST preloading
+  cannot fatal during WordPress admin bootstrap.
+
+## [1.6.2] - 2026-10-01
+
+### Fixed
+
+- Send the canonical WPistic activation context to AI and Search API requests,
+  while retaining the legacy license-key field for older gateways.
+- Prevent WordPress HTML fatal-error pages from being rendered inside AI Tools
+  and Search Console cards; REST failures now stay in a safe JSON/error state.
+- Catch AI callback runtime failures and return a user-safe REST error instead
+  of exposing the WordPress critical-error template.
+- Correct Google OAuth query construction so client ID, scope, and redirect
+  URI are encoded exactly once.
+- Make Rank Tracker failures actionable and distinguish unavailable Search API,
+  invalid license, and disconnected Search Console states.
+
+## [1.6.1] - 2026-10-01
+
+### Fixed
+
+- Point license activation, validation, and deactivation at the live WPistic
+  control-plane API (`/api/v1/licenses/*`) instead of the removed WordPress
+  compatibility route that returned an HTML 404.
+- Store WPistic activation credentials encrypted and send the canonical domain,
+  installation UUID, environment, and plugin/runtime metadata required by the
+  licensing API.
+- Preserve the server-assigned plan and entitlements from canonical responses,
+  migrate existing key-only installs on their next validation, and show useful
+  failure details without exposing license secrets.
+
 ## [1.6.0 "Aurora"] - 2026-09-11
 
 The biggest release in SEOistic history: all four premium addons go live, AI moves to the WPistic AI backend with a monthly AI Credits system, Google Search Console connection gets a real recovery flow, and the entire admin gets the animated Aurora design system.

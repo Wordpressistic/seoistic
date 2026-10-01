@@ -326,6 +326,36 @@
 		}
 	}
 
+	/**
+	 * Live credit balance after an AI action: every visible credits widget
+	 * (metabox + dashboard) reflects the server snapshot immediately, with a
+	 * short pulse so the deduction is felt rather than discovered later.
+	 */
+	function refreshCreditWidgets( usage ) {
+		var server = usage && usage.server ? usage.server : null;
+		if ( ! server || typeof server.left === 'undefined' || null === server.left ) {
+			return;
+		}
+		var left = parseInt( server.left, 10 );
+		if ( isNaN( left ) ) {
+			return;
+		}
+		document.querySelectorAll( '.seoistic-ai-credits-left strong' ).forEach( function ( el ) {
+			if ( el.textContent !== String( left ) ) {
+				el.textContent = String( left );
+				var box = el.closest( '.seoistic-ai-credits' );
+				if ( box ) {
+					box.classList.remove( 'is-credits-changed' );
+					void box.offsetWidth; /* restart the animation */
+					box.classList.add( 'is-credits-changed' );
+					window.setTimeout( function () {
+						box.classList.remove( 'is-credits-changed' );
+					}, 900 );
+				}
+			}
+		} );
+	}
+
 	function updateCheckLists( checks ) {
 		var fixes = document.getElementById( 'seoistic-priority-fixes' );
 		var passed = document.getElementById( 'seoistic-passed-checks' );
@@ -412,7 +442,9 @@
 
 		restPost( endpoint, { post_id: postId } )
 			.then( function ( json ) {
-				handleAiResult( panel, action, json.data || json, resultBox );
+				var data = json.data || json;
+				refreshCreditWidgets( json.usage || data.usage );
+				handleAiResult( panel, action, data, resultBox );
 			} )
 			.catch( function ( err ) {
 				if ( window.seoisticToast ) {

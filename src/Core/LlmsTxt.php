@@ -25,6 +25,12 @@ final class LlmsTxt {
 		if ( 'llms.txt' !== $path ) {
 			return;
 		}
+		/*
+		 * /llms.txt resolves to a 404 query in WordPress (no page owns the
+		 * slug), and the 404 status header is sent before template_redirect —
+		 * answer with an explicit 200 so AI crawlers keep the content.
+		 */
+		status_header( 200 );
 		header( 'Content-Type: text/plain; charset=utf-8' );
 		echo $this->generate(); // phpcs:ignore WordPress.Security.EscapeOutput
 		exit;

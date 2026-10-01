@@ -4,11 +4,11 @@ Tags: seo, schema, sitemap, redirects, indexing
 Requires at least: 6.4
 Tested up to: 6.4
 Requires PHP: 8.1
-Stable tag: 1.6.0
+Stable tag: 1.6.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-On-page SEO analysis, schema, sitemaps, redirects, fast indexing, and AI-assisted optimization with your own API key.
+On-page SEO analysis, schema, sitemaps, redirects, fast indexing, and WPistic AI-assisted optimization.
 
 == Description ==
 
@@ -82,9 +82,9 @@ actually says so.
 
 = Do I need my own API key for AI features? =
 
-Yes. SEOistic doesn't operate its own AI backend — you connect your own
-OpenRouter or Groq account (with your own API key) or your own self-hosted
-Ollama server, and only pay/use what that provider charges, if anything.
+No. Licensed AI features use the WPistic AI gateway and the activation token
+issued when the SEOistic license is connected. Business and Agency plans may
+optionally connect their own OpenAI-compatible endpoint from the AI settings.
 
 = Does SEOistic phone home or track my site? =
 
@@ -111,6 +111,20 @@ screenshot-N.png convention before a .org submission.)
 
 See CHANGELOG.md in the plugin's source repository for the full history.
 Highlights for this release are below.
+
+= 1.6.4 =
+* Improve Google Search Console OAuth setup guidance for External/Production apps.
+* Isolate concurrent OAuth state tokens so one administrator cannot invalidate another connection attempt.
+* Preserve an existing refresh token when Google returns an access token without rotating the refresh token.
+* Add the standard granted-scope OAuth parameter and clearer access-blocked guidance.
+
+= 1.6.3 =
+* Fix the AI Search REST registration fatal that could block the WordPress admin dashboard on sites using Gutenberg REST preloading.
+
+= 1.6.2 =
+* Fix canonical activation-token context for WPistic AI and Search API requests.
+* Replace raw WordPress critical-error HTML in AI Tools and Search Console with safe, actionable errors.
+* Fix Google OAuth query encoding and improve Rank Tracker connection diagnostics.
 
 = 1.6.0 "Aurora" =
 * New addon: AI Search Visibility (AEO) — llms.txt studio, AI crawler analytics, AI-scored AEO audits, citation checklist (Business)

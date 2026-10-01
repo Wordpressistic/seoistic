@@ -11,6 +11,7 @@ use Wpistic\Seoistic\Core\LlmsTxt;
 use Wpistic\Seoistic\Module\AbstractModule;
 use WP_Error;
 use WP_REST_Request;
+use WP_REST_Server;
 
 final class AiSearchModule extends AbstractModule {
 

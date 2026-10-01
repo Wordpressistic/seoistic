@@ -76,7 +76,7 @@ jobs:
         run: |
           wp plugin install /tmp/seoistic-build.zip --activate
           test "$(wp plugin get seoistic --field=status)" = active
-          test "$(wp plugin get seoistic --field=version)" = 1.6.0
+          test "$(wp plugin get seoistic --field=version)" = 1.6.4
           wp eval-file "$GITHUB_WORKSPACE/tests/wordpress-entitlements.php"
       - name: Upgrade from public 1.5.2 preserving SEO metadata
         working-directory: /tmp/seoistic-wp

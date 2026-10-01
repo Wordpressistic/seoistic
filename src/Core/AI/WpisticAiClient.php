@@ -204,6 +204,15 @@ final class WpisticAiClient {
 
 		$body = array(
 			'license_key' => $key,
+			// The activation token is the canonical credential issued by the
+			// WPistic control plane. Keep license_key for older gateway builds,
+			// while allowing the gateway to validate the current installation
+			// without a duplicated static key registry.
+			'activation_token'  => $this->license->activation_token(),
+			'domain'            => $this->license->domain(),
+			'environment'       => $this->license->environment(),
+			'installation_uuid' => $this->license->installation_uuid(),
+			'plugin_version'    => defined( 'SEOISTIC_VERSION' ) ? SEOISTIC_VERSION : '',
 			'site_url'    => home_url( '/' ),
 			'task'        => $task,
 			'payload'     => array(

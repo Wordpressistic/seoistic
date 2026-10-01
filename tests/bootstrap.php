@@ -63,6 +63,14 @@ if (! function_exists('wp_generate_uuid4')) {
         return 'uuid';
     }
 }
+if (! function_exists('wp_generate_password')) {
+    function wp_generate_password($length = 12, $special_chars = true, $extra_special_chars = false)
+    {
+        static $calls = 0;
+        ++$calls;
+        return str_repeat(chr(96 + (($calls - 1) % 26) + 1), max(1, (int) $length));
+    }
+}
 if (! function_exists('home_url')) {
     function home_url($path = '')
     {
@@ -184,6 +192,7 @@ if (! function_exists('wp_json_encode')) {
 if (! function_exists('wp_remote_post')) {
     function wp_remote_post($url, $args = array())
     {
+        $GLOBALS['seoistic_test_last_request'] = array('url' => $url, 'args' => $args);
         $response = array_shift($GLOBALS['seoistic_test_responses']) ?? array();
         $GLOBALS['seoistic_test_last_response'] = $response;
         return $response;
@@ -299,6 +308,27 @@ if (! function_exists('admin_url')) {
     function admin_url($path = '')
     {
         return 'https://example.com/wp-admin/' . $path;
+    }
+}
+if (! function_exists('add_query_arg')) {
+    function add_query_arg($args, $url = '')
+    {
+        $query = array();
+        $fragment = '';
+        if (false !== strpos($url, '#')) {
+            [$url, $fragment] = explode('#', $url, 2);
+            $fragment = '#' . $fragment;
+        }
+        $parts = wp_parse_url($url);
+        if (! empty($parts['query'])) {
+            parse_str($parts['query'], $query);
+        }
+        foreach ((array) $args as $key => $value) {
+            $query[(string) $key] = $value;
+        }
+        $base = (string) ($parts['scheme'] ?? '') . (isset($parts['scheme']) ? '://' : '') . (string) ($parts['host'] ?? '');
+        $base .= (string) ($parts['path'] ?? '');
+        return $base . (empty($query) ? '' : '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986)) . $fragment;
     }
 }
 if (! function_exists('wp_nonce_field')) {

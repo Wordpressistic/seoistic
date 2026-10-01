@@ -99,14 +99,14 @@ final class GscPage {
 		echo '<div class="seoistic-table-wrap" style="padding:18px 20px;">';
 		echo '<h2>' . esc_html__( 'Step 1 — Connect your Google Cloud OAuth app', 'seoistic' ) . '</h2>';
 		echo '<p class="description">' . esc_html__( 'SEOISTIC has no central relay server for this, so you connect using your own Google Cloud project — the same way you already do for the Google Indexing API in Indexistic.', 'seoistic' ) . '</p>';
+		echo '<p class="description"><strong>' . esc_html__( 'Important for every site:', 'seoistic' ) . '</strong> ' . esc_html__( 'Set the OAuth consent screen audience to External and publish the app to Production before other Google accounts connect. Testing mode only permits accounts listed as Test users, and Google may require OAuth verification for sensitive scopes.', 'seoistic' ) . ' <a href="' . esc_url( 'https://console.cloud.google.com/apis/credentials/consent' ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Open Google OAuth settings', 'seoistic' ) . '</a></p>';
 		echo '<ol style="margin:0 0 16px 20px;">';
-		echo '<li>' . esc_html__( 'Go to the Google Cloud Console → APIs & Services → Credentials.', 'seoistic' ) . '</li>';
-		echo '<li>' . esc_html__( 'Create an OAuth 2.0 Client ID of type "Web application".', 'seoistic' ) . '</li>';
+		echo '<li>' . esc_html__( 'Configure OAuth consent screen → Audience as External, complete the app information and privacy policy, then publish the app to Production.', 'seoistic' ) . '</li>';
+		echo '<li>' . esc_html__( 'Go to Google Cloud Console → APIs & Services → Credentials and create an OAuth 2.0 Client ID of type "Web application".', 'seoistic' ) . '</li>';
 		echo '<li>' . esc_html__( 'Add this exact Authorized redirect URI:', 'seoistic' ) . ' ';
 		$this->render_redirect_copy();
 		echo '</li>';
-		echo '<li>' . esc_html__( 'Enable the "Google Search Console API" for the project.', 'seoistic' ) . '</li>';
-		echo '<li>' . esc_html__( 'Paste the Client ID and Client Secret below.', 'seoistic' ) . '</li>';
+		echo '<li>' . esc_html__( 'Enable the Google Search Console API for the project, then paste the Client ID and Client Secret below.', 'seoistic' ) . '</li>';
 		echo '</ol>';
 
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
@@ -124,6 +124,7 @@ final class GscPage {
 		echo '<div class="seoistic-table-wrap" style="padding:18px 20px;">';
 		echo '<h2>' . esc_html__( 'Step 2 — Connect', 'seoistic' ) . '</h2>';
 		echo '<p class="description">' . esc_html__( 'You\'ll be sent to Google to authorize read-only access to your Search Console data, then back here to pick a property.', 'seoistic' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'If Google shows “Access blocked” before returning here, the OAuth app is still in Testing or the account is not an approved Test user. Google blocks that screen before SEOISTIC can receive a callback.', 'seoistic' ) . '</p>';
 		echo '<a class="seoistic-btn seoistic-btn-primary" href="' . esc_url( ( new GscClient() )->authorize_url() ) . '"><span class="dashicons dashicons-admin-links"></span> ' . esc_html__( 'Connect Google Search Console', 'seoistic' ) . '</a>';
 		echo '</div>';
 	}
@@ -235,7 +236,7 @@ final class GscPage {
 		echo '<h2 id="seoistic-gsc-recovery-title">' . esc_html__( 'Recovery: Google returned access_denied (403)', 'seoistic' ) . '</h2>';
 		echo '<ol class="seoistic-gsc-recovery-steps">';
 		echo '<li><strong>' . esc_html__( 'Add a Test User', 'seoistic' ) . '</strong><br>' . esc_html__( 'In Google Cloud Console, open APIs & Services → OAuth consent screen → Audience. Under Test users, click + Add users, then add the exact Google account used to connect SEOISTIC.', 'seoistic' ) . ' <a href="' . esc_url( 'https://console.cloud.google.com/apis/credentials/consent' ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Open OAuth consent screen', 'seoistic' ) . '</a></li>';
-		echo '<li><strong>' . esc_html__( 'Publish the app for permanent access', 'seoistic' ) . '</strong><br>' . esc_html__( 'Testing mode and test-user access expire. After setup is verified, use Publish app on the OAuth consent screen. Google may show an unverified-scopes warning until verification completes; the requested scope is read-only.', 'seoistic' ) . '</li>';
+		echo '<li><strong>' . esc_html__( 'Publish the app for access from any Google account', 'seoistic' ) . '</strong><br>' . esc_html__( 'Testing mode is limited to explicitly listed Test users and their authorization expires. Set the app to In production after completing Google\'s consent-screen requirements. Google may require verification before unrestricted access to sensitive scopes.', 'seoistic' ) . '</li>';
 		echo '<li><strong>' . esc_html__( 'Check the redirect URI', 'seoistic' ) . '</strong><br>';
 		$this->render_redirect_copy();
 		echo '</li>';

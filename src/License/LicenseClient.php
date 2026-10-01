@@ -7,21 +7,12 @@ namespace Wpistic\Seoistic\License;
 use Wpistic\Seoistic\Core\Crypto;
 
 /**
- * Talks to a Licenseistic server (default wpistic.com) over its public REST API
- * — POST {server}/wp-json/licenseistic/v1/license/{activate,deactivate,ping} —
- * to activate / validate / deactivate a SEOistic license. No API key needed
- * (public, IP-rate-limited server-side); this client adds its own rate limit
- * on the activation form so a single site can't hammer the server either.
+ * Talks to the WPistic control-plane licensing API.
  *
- * The license key is encrypted at rest (Core\Crypto, same pattern as the AI
- * provider keys) and is never echoed back in full once it has been read once
- * — callers needing to show it in the UI must use masked_key().
- *
- * Server/product configuration is no longer a wp-admin-editable setting (see
- * SEOISTIC_LICENSE_API_URL / SEOISTIC_LICENSE_PRODUCT_ID in seoistic.php and
- * the seoistic_license_api_url / seoistic_license_product_id filters) — the
- * legacy options are still *read* as a fallback so a pre-1.3 install that had
- * customized them keeps working, but nothing writes to them anymore.
+ * Released builds previously posted to the removed WordPress compatibility
+ * path at /wp-json/licenseistic/v1/license/*, which made every activation
+ * appear to fail with an HTML 404. This client uses the live SDK contract at
+ * /api/v1/licenses/* and stores the returned activation credentials encrypted.
  */
 final class LicenseClient {
 
@@ -31,17 +22,18 @@ final class LicenseClient {
 	private const OPT_SERVER       = 'seoistic_license_server';   // Legacy fallback only — no longer written.
 	private const OPT_PRODUCT      = 'seoistic_license_product';  // Legacy fallback only — no longer written.
 	private const OPT_INSTANCE     = 'seoistic_license_instance';
+	private const OPT_TOKEN        = 'seoistic_license_activation_token';
+	private const OPT_VERIFY       = 'seoistic_license_verification_key';
 	private const OPT_LAST_OK      = 'seoistic_license_last_ok';
 	private const OPT_LAST_CHECK   = 'seoistic_license_last_check';
 	private const OPT_FAIL_COUNT   = 'seoistic_license_fail_count';
 	private const OPT_META         = 'seoistic_license_meta';
 
-	private const CRYPTO_CONTEXT = 'license';
+	private const CRYPTO_CONTEXT        = 'license';
+	private const TOKEN_CRYPTO_CONTEXT  = 'license_activation_token';
+	private const VERIFY_CRYPTO_CONTEXT = 'license_verification_key';
 
-	/** A confirmed-"active" status stays trusted for this long without a fresh
-	 *  server confirmation — a single outage/timeout must never instantly
-	 *  downgrade a paying site to Free. A genuine revoke/expiry from the
-	 *  server still applies immediately (see validate()). */
+	/** A confirmed-active license remains trusted during a temporary outage. */
 	private const TRUST_WINDOW = 30 * DAY_IN_SECONDS;
 
 	private const BACKOFF_BASE = HOUR_IN_SECONDS;
@@ -54,11 +46,11 @@ final class LicenseClient {
 	public function server(): string {
 		$base = defined( 'SEOISTIC_LICENSE_API_URL' ) && '' !== SEOISTIC_LICENSE_API_URL
 			? SEOISTIC_LICENSE_API_URL
-			: (string) get_option( self::OPT_SERVER, 'https://wpistic.com' );
+			: (string) get_option( self::OPT_SERVER, 'https://api.wpistic.com' );
 
 		/**
-		 * Filter the Licenseistic API base URL. Advanced deployment override —
-		 * not exposed as an editable wp-admin field.
+		 * Advanced deployment override — not exposed as an editable wp-admin
+		 * field. The value is the API origin, without a route suffix.
 		 *
 		 * @param string $base
 		 */
@@ -71,7 +63,8 @@ final class LicenseClient {
 			: (int) get_option( self::OPT_PRODUCT, 0 );
 
 		/**
-		 * Filter the Licenseistic product id this install validates against.
+		 * Legacy compatibility filter. The canonical API resolves the product
+		 * from the key prefix, so product_id is no longer sent by this client.
 		 *
 		 * @param int $id
 		 */
@@ -79,9 +72,8 @@ final class LicenseClient {
 	}
 
 	/**
-	 * The decrypted license key. Pre-1.3 installs stored it in plaintext —
-	 * detected and transparently re-saved encrypted on first read (idempotent,
-	 * no visible migration step, no data loss).
+	 * The decrypted license key. Pre-1.3 installs stored it in plaintext;
+	 * detect and transparently re-save that value encrypted on first read.
 	 */
 	public function key(): string {
 		$stored = (string) get_option( self::OPT_KEY, '' );
@@ -100,10 +92,7 @@ final class LicenseClient {
 		return '';
 	}
 
-	/**
-	 * Last 4 characters visible, everything else masked — the only form the
-	 * key may ever appear in once activated.
-	 */
+	/** Last 4 characters visible, everything else masked. */
 	public function masked_key(): string {
 		$key = $this->key();
 		$len = strlen( $key );
@@ -137,9 +126,8 @@ final class LicenseClient {
 	}
 
 	/**
-	 * Any additional fields the server returned on the last successful ping
-	 * (e.g. site usage counts) beyond the fields this client explicitly
-	 * models. Never fabricated — empty unless the server actually sent it.
+	 * Additional fields returned by WPistic, including the authoritative plan
+	 * and entitlement map. Secrets and the response signature are excluded.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -170,8 +158,33 @@ final class LicenseClient {
 		return $instance;
 	}
 
+	/**
+	 * The decrypted activation token used by first-party WPistic services.
+	 * It is never rendered in wp-admin or written to logs; callers should only
+	 * send it over HTTPS to an authenticated service endpoint.
+	 */
+	public function activation_token(): string {
+		$stored = (string) get_option( self::OPT_TOKEN, '' );
+		return Crypto::decrypt( $stored, self::TOKEN_CRYPTO_CONTEXT );
+	}
+
+	public function installation_uuid(): string {
+		return $this->instance();
+	}
+
+	public function domain(): string {
+		$url  = (string) home_url();
+		$host = wp_parse_url( $url, PHP_URL_HOST );
+		return '' !== (string) $host ? strtolower( (string) $host ) : trim( $url, '/' );
+	}
+
+	public function environment(): string {
+		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production';
+		return in_array( $environment, array( 'production', 'staging', 'development', 'local' ), true ) ? $environment : 'production';
+	}
+
 	/* -------------------------------------------------------------- */
-	/* Rate limiting — server-side, enforced before any network call.   */
+	/* Rate limiting — enforced before any network call.              */
 	/* -------------------------------------------------------------- */
 
 	public function is_rate_limited(): bool {
@@ -184,33 +197,36 @@ final class LicenseClient {
 	}
 
 	/* -------------------------------------------------------------- */
-	/* Requests                                                          */
+	/* Requests                                                        */
 	/* -------------------------------------------------------------- */
 
-	/**
-	 * @return array<string, mixed>
-	 */
-	private function payload( string $key ): array {
-		$payload = array(
-			'license_key' => $key,
-			'site_url'    => home_url(),
-			'instance_id' => $this->instance(),
+	/** @return array<string, mixed> */
+	private function activation_payload( string $key ): array {
+		return array(
+			'key'               => $key,
+			'domain'            => $this->domain(),
+			'environment'       => $this->environment(),
+			'installation_uuid' => $this->instance(),
+			'site_url'          => function_exists( 'site_url' ) ? site_url() : home_url(),
+			'home_url'          => home_url(),
+			'product_version'   => defined( 'SEOISTIC_VERSION' ) ? SEOISTIC_VERSION : '',
+			'wp_version'        => function_exists( 'get_bloginfo' ) ? get_bloginfo( 'version' ) : '',
+			'php_version'       => PHP_VERSION,
 		);
-		if ( $this->product_id() > 0 ) {
-			$payload['product_id'] = $this->product_id();
-		}
-		return $payload;
 	}
 
-	/**
-	 * @param array<string, mixed> $body
-	 * @return array{success:bool, message?:string, code?:string, data?:array<string,mixed>}
-	 */
+	/** @return array<string, mixed> */
 	private function post( string $endpoint, array $body ): array {
+		$headers = array( 'Content-Type' => 'application/json' );
+		if ( 'activate' === $endpoint ) {
+			// Prevent a browser retry from creating duplicate activation events.
+			$headers['X-Idempotency-Key'] = 'seoistic-' . wp_generate_uuid4();
+		}
+
 		$response = wp_remote_post(
-			$this->server() . '/wp-json/licenseistic/v1/license/' . $endpoint,
+			$this->server() . '/api/v1/licenses/' . $endpoint,
 			array(
-				'headers' => array( 'Content-Type' => 'application/json' ),
+				'headers' => $headers,
 				'body'    => wp_json_encode( $body ),
 				'timeout' => 15,
 			)
@@ -226,35 +242,59 @@ final class LicenseClient {
 		}
 
 		$data = json_decode( wp_remote_retrieve_body( $response ), true );
-		if ( ! is_array( $data ) || ! array_key_exists( 'success', $data ) ) {
-			return array( 'success' => false, 'message' => __( 'Unexpected response from the license server.', 'seoistic' ), 'code' => 'bad_response' );
+		if ( ! is_array( $data ) ) {
+			return array( 'success' => false, 'message' => __( 'The license server returned an unexpected response.', 'seoistic' ), 'code' => 'bad_response' );
 		}
 
-		return array(
-			'success' => (bool) $data['success'],
-			'message' => isset( $data['message'] ) ? sanitize_text_field( wp_strip_all_tags( (string) $data['message'] ) ) : '',
-			'code'    => isset( $data['code'] ) ? sanitize_key( (string) $data['code'] ) : '',
-			'data'    => isset( $data['data'] ) && is_array( $data['data'] ) ? $data['data'] : array(),
-		);
+		// Canonical API errors are {error:{code,message}}.
+		if ( isset( $data['error'] ) && is_array( $data['error'] ) ) {
+			$error = $data['error'];
+			return array(
+				'success' => false,
+				'message' => isset( $error['message'] ) ? sanitize_text_field( wp_strip_all_tags( (string) $error['message'] ) ) : '',
+				'code'    => isset( $error['code'] ) ? sanitize_key( (string) $error['code'] ) : 'failed',
+				'data'    => array(),
+			);
+		}
+
+		// Keep parsing the old response shape for self-hosted/staging installs.
+		if ( array_key_exists( 'success', $data ) ) {
+			return array(
+				'success' => (bool) $data['success'],
+				'message' => isset( $data['message'] ) ? sanitize_text_field( wp_strip_all_tags( (string) $data['message'] ) ) : '',
+				'code'    => isset( $data['code'] ) ? sanitize_key( (string) $data['code'] ) : '',
+				'data'    => isset( $data['data'] ) && is_array( $data['data'] ) ? $data['data'] : array(),
+			);
+		}
+
+		if ( 'deactivate' === $endpoint && ! empty( $data['deactivated'] ) ) {
+			return array( 'success' => true, 'data' => $data );
+		}
+
+		// Canonical activation/validation responses contain a valid boolean.
+		if ( array_key_exists( 'valid', $data ) ) {
+			return array(
+				'success' => (bool) $data['valid'],
+				'message' => (bool) $data['valid'] ? '' : __( 'The license is not valid for this site.', 'seoistic' ),
+				'code'    => (bool) $data['valid'] ? '' : sanitize_key( (string) ( $data['status'] ?? 'invalid_license' ) ),
+				'data'    => $data,
+			);
+		}
+
+		return array( 'success' => false, 'message' => __( 'The license server returned an unexpected response.', 'seoistic' ), 'code' => 'bad_response' );
 	}
 
-	/**
-	 * A request the server never received/answered (network failure, 5xx, or
-	 * an unparseable body) — ambiguous, must never be treated the same as an
-	 * explicit rejection from the server.
-	 *
-	 * @param array<string, mixed> $result
-	 */
+	/** @param array<string, mixed> $result */
 	private function is_transient_failure( array $result ): bool {
 		return in_array( (string) ( $result['code'] ?? '' ), array( 'network', 'bad_response' ), true );
 	}
 
 	private function normalize_status( string $raw ): string {
 		return match ( sanitize_key( $raw ) ) {
-			'active', 'valid' => 'active',
+			'active', 'valid', 'grace_period' => 'active',
 			'expired' => 'expired',
 			'inactive' => 'inactive',
-			default => 'invalid', // revoked, cancelled, not_found, wrong_product, site_limit, …
+			default => 'invalid',
 		};
 	}
 
@@ -262,57 +302,98 @@ final class LicenseClient {
 		return '' !== $value && false !== strtotime( $value ) ? $value : '';
 	}
 
+	/** @param array<string, mixed> $data */
+	private function cache_response( array $data ): void {
+		$status = $this->normalize_status( (string) ( $data['status'] ?? ( ! empty( $data['valid'] ) ? 'active' : 'invalid' ) ) );
+		update_option( self::OPT_STATUS, $status, false );
+		update_option( self::OPT_EXPIRES, $this->sanitize_date( (string) ( $data['expires_at'] ?? '' ) ), false );
+		update_option( 'seoistic_license_product_active', absint( $data['product_id'] ?? 0 ), false );
+
+		$meta = array_diff_key( $data, array_flip( array( 'activation_token', 'verification_key', 'signature' ) ) );
+		update_option( self::OPT_META, $meta, false );
+
+		if ( ! empty( $data['valid'] ) && 'active' === $status ) {
+			update_option( self::OPT_LAST_OK, time(), false );
+		}
+	}
+
+	/** @param array<string, mixed> $result */
+	private function store_activation( array $result ): void {
+		$data = (array) ( $result['data'] ?? array() );
+		if ( ! empty( $data['activation_token'] ) ) {
+			update_option( self::OPT_TOKEN, Crypto::encrypt( (string) $data['activation_token'], self::TOKEN_CRYPTO_CONTEXT ), false );
+		}
+		if ( ! empty( $data['verification_key'] ) ) {
+			update_option( self::OPT_VERIFY, Crypto::encrypt( (string) $data['verification_key'], self::VERIFY_CRYPTO_CONTEXT ), false );
+		}
+		if ( ! array_key_exists( 'valid', $data ) && ! empty( $result['success'] ) ) {
+			$data['valid'] = true;
+		}
+		$this->cache_response( $data );
+	}
+
+	private function clear_validation_state(): void {
+		foreach ( array( self::OPT_STATUS, self::OPT_EXPIRES, self::OPT_TOKEN, self::OPT_VERIFY, self::OPT_LAST_OK, self::OPT_LAST_CHECK, self::OPT_FAIL_COUNT, self::OPT_META, 'seoistic_license_product_active' ) as $option ) {
+			delete_option( $option );
+		}
+	}
+
 	/**
-	 * Immediate, real-time activation — no grace/backoff (a fresh user action
-	 * must reflect the true, current server answer).
+	 * Immediate, real-time activation. The canonical API response is cached
+	 * directly, avoiding a second request and an unnecessary rate-limit hit.
 	 *
 	 * @return array<string, mixed>
 	 */
 	public function activate( string $key ): array {
-		$result = $this->post( 'activate', $this->payload( $key ) );
+		$previous_key = $this->key();
+		$result       = $this->post( 'activate', $this->activation_payload( $key ) );
+
 		if ( ! empty( $result['success'] ) ) {
-			if ( $key !== $this->key() ) {
-				// A replacement key must not inherit the previous key's paid plan
-				// or trust window when its first validation cannot reach the server.
-				foreach ( array( self::OPT_STATUS, self::OPT_EXPIRES, self::OPT_LAST_OK, self::OPT_META, 'seoistic_license_product_active' ) as $option ) {
-					delete_option( $option );
-				}
+			if ( $key !== $previous_key ) {
+				$this->clear_validation_state();
 			}
-			update_option( self::OPT_KEY, Crypto::encrypt( $key, self::CRYPTO_CONTEXT ) );
+			update_option( self::OPT_KEY, Crypto::encrypt( $key, self::CRYPTO_CONTEXT ), false );
 			update_option( self::OPT_FAIL_COUNT, 0, false );
 			update_option( self::OPT_LAST_CHECK, time(), false );
-			$this->validate();
+			$this->store_activation( $result );
 		}
+
 		return $result;
 	}
 
-	/**
-	 * @return array<string, mixed>
-	 */
+	/** @return array<string, mixed> */
 	public function deactivate(): array {
-		$key = $this->key();
-		if ( '' === $key ) {
+		$key   = $this->key();
+		$token = $this->activation_token();
+		if ( '' === $key || '' === $token ) {
+			$this->clear_validation_state();
+			delete_option( self::OPT_KEY );
 			return array( 'success' => true );
 		}
-		$result = $this->post( 'deactivate', array( 'license_key' => $key, 'site_url' => home_url(), 'instance_id' => $this->instance() ) );
 
-		foreach ( array( self::OPT_KEY, self::OPT_STATUS, self::OPT_EXPIRES, self::OPT_LAST_OK, self::OPT_LAST_CHECK, self::OPT_FAIL_COUNT, self::OPT_META, 'seoistic_license_product_active' ) as $option ) {
-			delete_option( $option );
+		$result = $this->post(
+			'deactivate',
+			array(
+				'activation_token'  => $token,
+				'installation_uuid' => $this->instance(),
+			)
+		);
+
+		if ( ! empty( $result['success'] ) ) {
+			$this->clear_validation_state();
+			delete_option( self::OPT_KEY );
 		}
 		return $result;
 	}
 
 	/**
-	 * Ping the server, cache status/expiry, and return whether the license is
-	 * valid. Called from the daily cron and right after activate(). A single
-	 * unreachable server backs off (capped exponential) and never overwrites
-	 * the last authoritative status — only an explicit server response
-	 * (success or an explicit rejection) changes the stored status.
+	 * Validate the activation token, cache the server response, and preserve a
+	 * confirmed active state across temporary network failures.
 	 */
 	public function validate(): bool {
 		$key = $this->key();
 		if ( '' === $key ) {
-			update_option( self::OPT_STATUS, 'inactive' );
+			update_option( self::OPT_STATUS, 'inactive', false );
 			return false;
 		}
 
@@ -321,40 +402,45 @@ final class LicenseClient {
 			$last_check = (int) get_option( self::OPT_LAST_CHECK, 0 );
 			$wait       = min( self::BACKOFF_MAX, self::BACKOFF_BASE * $fail_count );
 			if ( ( time() - $last_check ) < $wait ) {
-				return $this->is_valid(); // Still backing off — trust the cached state.
+				return $this->is_valid();
 			}
+		}
+
+		$token = $this->activation_token();
+		if ( '' === $token ) {
+			// Migrate a key-only pre-canonical install through activation so the
+			// API can issue its activation token for this installation.
+			$result = $this->activate( $key );
+			return ! empty( $result['success'] ) && $this->is_valid();
 		}
 
 		update_option( self::OPT_LAST_CHECK, time(), false );
-
-		$body                      = $this->payload( $key );
-		$body['installed_version'] = defined( 'SEOISTIC_VERSION' ) ? SEOISTIC_VERSION : '';
-		$result                    = $this->post( 'ping', $body );
+		$result = $this->post(
+			'validate',
+			array(
+				'activation_token'  => $token,
+				'domain'            => $this->domain(),
+				'environment'       => $this->environment(),
+				'installation_uuid' => $this->instance(),
+				'plugin_version'    => defined( 'SEOISTIC_VERSION' ) ? SEOISTIC_VERSION : '',
+			)
+		);
 
 		if ( $this->is_transient_failure( $result ) ) {
 			update_option( self::OPT_FAIL_COUNT, $fail_count + 1, false );
-			return $this->is_valid(); // Leave the last authoritative status untouched.
+			return $this->is_valid();
 		}
 		update_option( self::OPT_FAIL_COUNT, 0, false );
 
+		if ( isset( $result['data'] ) && is_array( $result['data'] ) && array_key_exists( 'valid', $result['data'] ) ) {
+			$this->cache_response( $result['data'] );
+		}
+
 		if ( ! empty( $result['success'] ) ) {
-			$data   = (array) ( $result['data'] ?? array() );
-			$status = $this->normalize_status( (string) ( $data['status'] ?? '' ) );
-
-			update_option( self::OPT_STATUS, $status );
-			update_option( self::OPT_EXPIRES, $this->sanitize_date( (string) ( $data['expires_at'] ?? '' ) ) );
-			update_option( 'seoistic_license_product_active', absint( $data['product_id'] ?? 0 ) );
-			update_option( self::OPT_META, array_diff_key( $data, array_flip( array( 'status', 'expires_at', 'product_id' ) ) ), false );
-
-			if ( 'active' === $status ) {
-				update_option( self::OPT_LAST_OK, time(), false );
-			}
 			return $this->is_valid();
 		}
 
-		// The server responded but explicitly rejected the key (revoked, wrong
-		// product, not found) — authoritative, applied immediately.
-		update_option( self::OPT_STATUS, 'invalid' );
+		update_option( self::OPT_STATUS, 'invalid', false );
 		return false;
 	}
 }

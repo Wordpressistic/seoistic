@@ -99,6 +99,7 @@ final class License {
 			'rate_limited' => __( 'Too many attempts. Please wait a few minutes and try again.', 'seoistic' ),
 			'network'      => __( 'Could not reach the license server. Check your site’s outbound connections and try again shortly.', 'seoistic' ),
 			'bad_response' => __( 'The license server returned an unexpected response. Please try again shortly.', 'seoistic' ),
+			'deactivate_failed' => __( 'The license could not be deactivated. Please try again shortly.', 'seoistic' ),
 			'empty_key'    => __( 'Enter a license key first.', 'seoistic' ),
 			'failed'       => __( 'That license key could not be activated. Double-check the key and try again.', 'seoistic' ),
 			default        => '',
@@ -206,13 +207,15 @@ final class License {
 			} else {
 				$this->client->record_attempt();
 				$result = $this->client->activate( $key );
-				$code   = ! empty( $result['success'] ) ? 'activated' : ( '' !== ( $result['code'] ?? '' ) ? (string) $result['code'] : 'failed' );
+				$raw_code = (string) ( $result['code'] ?? '' );
+				$code     = ! empty( $result['success'] ) ? 'activated' : ( in_array( $raw_code, array( 'network', 'bad_response', 'rate_limited' ), true ) ? $raw_code : 'failed' );
 				$detail = (string) ( $result['message'] ?? '' );
 				do_action( 'seoistic/license_event', $code );
 			}
 		} elseif ( 'deactivate' === $action ) {
-			$this->client->deactivate();
-			$code = 'deactivated';
+			$result = $this->client->deactivate();
+			$code   = ! empty( $result['success'] ) ? 'deactivated' : ( '' !== ( $result['code'] ?? '' ) ? (string) $result['code'] : 'deactivate_failed' );
+			$detail = (string) ( $result['message'] ?? '' );
 		} else {
 			wp_safe_redirect( admin_url( 'admin.php?page=seoistic-license' ) );
 			exit;

@@ -55,6 +55,24 @@
 		window.requestAnimationFrame( step );
 	}
 
+	function ringCircumference( ring, fill ) {
+		var fromData = safeNumber( ring.getAttribute( 'data-circumference' ), 0 );
+		if ( fromData > 0 ) {
+			return fromData;
+		}
+		return safeNumber( fill && fill.getAttribute( 'r' ), 0 ) * 2 * Math.PI;
+	}
+
+	function offsetFor( circumference, score ) {
+		return circumference * ( 1 - Math.max( 0, Math.min( 100, score ) ) / 100 );
+	}
+
+	function ringNumberElement( ring ) {
+		// The count-up target is the number span when present so the "/ 100"
+		// suffix on large rings survives the animation.
+		return ring.querySelector( '.seoistic-ring-num' ) || ring.querySelector( '.seoistic-ring-label' );
+	}
+
 	window.auroraAnimateScore = function( ring, newScore, options ) {
 		if ( ! ring ) {
 			return;
@@ -64,17 +82,17 @@
 		var oldScore = clampScore( ring.getAttribute( 'data-aurora-score' ) || options.from );
 		var target = clampScore( newScore );
 		var fill = ring.querySelector( '.seoistic-ring-fill' );
-		var label = ring.querySelector( '.seoistic-ring-label' );
+		var label = ringNumberElement( ring );
 		var oldLabel = ring.querySelector( '.aurora-score-old' );
-		var circumference = safeNumber( fill && fill.getAttribute( 'r' ), 0 ) * 2 * Math.PI;
+		var circumference = ringCircumference( ring, fill );
 
 		if ( circumference ) {
 			if ( reducedMotion ) {
-				fill.style.strokeDashoffset = String( circumference * ( 1 - target / 100 ) );
+				fill.style.strokeDashoffset = String( offsetFor( circumference, target ) );
 			} else {
-				fill.style.strokeDashoffset = String( circumference * ( 1 - oldScore / 100 ) );
+				fill.style.strokeDashoffset = String( offsetFor( circumference, oldScore ) );
 				window.requestAnimationFrame( function() {
-					fill.style.strokeDashoffset = String( circumference * ( 1 - target / 100 ) );
+					fill.style.strokeDashoffset = String( offsetFor( circumference, target ) );
 				} );
 			}
 		}
@@ -97,29 +115,56 @@
 			if ( oldLabel ) {
 				oldLabel.textContent = '';
 			}
+			if ( oldScore !== target && ! reducedMotion ) {
+				ring.classList.add( 'is-landing' );
+				window.setTimeout( function() {
+					ring.classList.remove( 'is-landing' );
+				}, 520 );
+			}
 		}, reducedMotion ? 0 : 400 );
 		ring.setAttribute( 'data-aurora-score', String( target ) );
+		ring.setAttribute( 'data-score', String( target ) );
 	};
 
+	/**
+	 * Sweep every rendered ring from zero to its score. Rings animate in a
+	 * staggered cascade (90ms apart) so a list of scores feels choreographed
+	 * rather than mechanical; the arc sweep and the count-up stay in sync.
+	 */
 	window.auroraInitScores = function() {
-		document.querySelectorAll( '.seoistic-ring' ).forEach( function( ring ) {
+		var rings = document.querySelectorAll( '.seoistic-ring' );
+		var cascade = 0;
+		rings.forEach( function( ring ) {
 			var fill = ring.querySelector( '.seoistic-ring-fill' );
-			var label = ring.querySelector( '.seoistic-ring-label' );
+			var label = ringNumberElement( ring );
 			if ( ! fill || ! label ) {
 				return;
 			}
-			var circumference = safeNumber( fill.getAttribute( 'r' ), 0 ) * 2 * Math.PI;
-			var score = clampScore( parseFloat( label.textContent ) );
+			if ( ring.dataset.auroraReady ) {
+				return;
+			}
+			ring.dataset.auroraReady = 'true';
+
+			var circumference = ringCircumference( ring, fill );
+			var score = clampScore( ring.getAttribute( 'data-score' ) || parseFloat( label.textContent ) );
+			var delay = cascade * 90;
+			cascade++;
+
 			if ( circumference && ! reducedMotion ) {
 				fill.style.strokeDashoffset = String( circumference );
-				window.requestAnimationFrame( function() {
-					fill.style.strokeDashoffset = String( circumference * ( 1 - score / 100 ) );
-				} );
-				animateNumber( label, 0, score, 380 );
-			} else {
-				fill.style.strokeDashoffset = String( circumference * ( 1 - score / 100 ) );
+				window.setTimeout( function() {
+					ring.classList.add( 'is-animating' );
+					fill.style.strokeDashoffset = String( offsetFor( circumference, score ) );
+					animateNumber( label, 0, score, 1050 );
+					window.setTimeout( function() {
+						ring.classList.remove( 'is-animating' );
+					}, 1100 );
+				}, delay );
+			} else if ( circumference ) {
+				fill.style.strokeDashoffset = String( offsetFor( circumference, score ) );
 			}
 			ring.setAttribute( 'data-aurora-score', String( score ) );
+			ring.setAttribute( 'data-score', String( score ) );
 		} );
 	};
 
