@@ -3,6 +3,17 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.6.5] - 2026-10-01
+
+### Fixed
+
+- Make the HTML sitemap reflect all current published, viewable content instead
+  of truncating at 300 items.
+- Deduplicate sitemap URLs and honor SEOistic noindex metadata in the HTML
+  sitemap, including legacy and comma-separated robots directives.
+- Apply the same noindex boundary to WordPress XML sitemap queries so
+  `_seoistic_noindex` and `_seoistic_robots` cannot disagree.
+
 ## [1.6.4] - 2026-10-01
 
 ### Fixed

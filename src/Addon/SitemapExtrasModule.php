@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Wpistic\Seoistic\Addon;
 
+use Wpistic\Seoistic\Core\PostSeo;
 use Wpistic\Seoistic\Module\AbstractModule;
 
 /**
@@ -31,19 +32,37 @@ final class SitemapExtrasModule extends AbstractModule {
 
 	public function html_sitemap( $atts ): string {
 		$out = '<div class="seoistic-html-sitemap">';
+		$seen = array();
 		foreach ( get_post_types( array( 'public' => true ), 'objects' ) as $type ) {
-			if ( 'attachment' === $type->name ) {
+			if ( 'attachment' === $type->name || ! is_post_type_viewable( $type->name ) ) {
 				continue;
 			}
-			$posts = get_posts( array( 'post_type' => $type->name, 'numberposts' => 300, 'orderby' => 'title', 'order' => 'ASC' ) );
+			$posts = get_posts(
+				array(
+					'post_type'           => $type->name,
+					'post_status'         => 'publish',
+					'posts_per_page'      => 50000,
+					'orderby'             => 'title',
+					'order'               => 'ASC',
+					'no_found_rows'       => true,
+					'ignore_sticky_posts' => true,
+				)
+			);
 			if ( ! $posts ) {
 				continue;
 			}
-			$out .= '<h2>' . esc_html( $type->labels->name ) . '</h2><ul>';
+			$items = '';
 			foreach ( $posts as $post ) {
-				$out .= '<li><a href="' . esc_url( get_permalink( $post ) ) . '">' . esc_html( get_the_title( $post ) ) . '</a></li>';
+				$url = get_permalink( $post );
+				if ( ! $url || isset( $seen[ $url ] ) || PostSeo::is_noindex( $post->ID ) || ! apply_filters( 'seoistic_html_sitemap_include_post', true, $post ) ) {
+					continue;
+				}
+				$seen[ $url ] = true;
+				$items .= '<li><a href="' . esc_url( $url ) . '">' . esc_html( get_the_title( $post ) ) . '</a></li>';
 			}
-			$out .= '</ul>';
+			if ( '' !== $items ) {
+				$out .= '<h2>' . esc_html( $type->labels->name ) . '</h2><ul>' . $items . '</ul>';
+			}
 		}
 		return $out . '</div>';
 	}

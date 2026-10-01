@@ -284,12 +284,18 @@ cd lib/seo-core && composer install && vendor/bin/phpunit
 ### Building a release ZIP
 
 ```bash
-bash bin/build-release.sh
+bash scripts/build-release.sh 1.6.5
 ```
 
-Produces `build/packages/seoistic-{version}.zip` and a matching
-`.sha256` checksum — see `docs/implementation-plan.md` and the script
-itself for exactly what it does and excludes.
+On Windows, use the equivalent PowerShell builder:
+
+```powershell
+pwsh -File scripts/build-release.ps1 -Version 1.6.5
+```
+
+Both builders produce `dist/seoistic-{version}.zip` and a matching SHA-256
+checksum. The package contains only runtime files under the `seoistic/` root;
+tests, development metadata, and prior distribution archives are excluded.
 
 ### More documentation
 

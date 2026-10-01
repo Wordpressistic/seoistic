@@ -4,7 +4,7 @@ Tags: seo, schema, sitemap, redirects, indexing
 Requires at least: 6.4
 Tested up to: 6.4
 Requires PHP: 8.1
-Stable tag: 1.6.4
+Stable tag: 1.6.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -111,6 +111,11 @@ screenshot-N.png convention before a .org submission.)
 
 See CHANGELOG.md in the plugin's source repository for the full history.
 Highlights for this release are below.
+
+= 1.6.5 =
+* Keep the HTML sitemap complete, deduplicated, and automatically aligned with published public content.
+* Exclude both current noindex metadata and legacy robots noindex values from generated sitemaps.
+* Support comma-separated robots directives such as noindex,nofollow.
 
 = 1.6.4 =
 * Improve Google Search Console OAuth setup guidance for External/Production apps.

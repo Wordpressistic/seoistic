@@ -35,7 +35,7 @@ final class PostSeo {
 		if ( '' !== $value ) {
 			return (bool) $value;
 		}
-		return 'noindex' === get_post_meta( $post_id, '_seoistic_robots', true );
+		return false !== strpos( strtolower( (string) get_post_meta( $post_id, '_seoistic_robots', true ) ), 'noindex' );
 	}
 
 	public static function is_nofollow( int $post_id ): bool {

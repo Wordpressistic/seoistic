@@ -52,11 +52,23 @@ final class Sitemaps {
 	 * @return array<string, mixed>
 	 */
 	public function exclude_posts( $args, $post_type ) {
-		$args['meta_query'] = array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
-			'relation' => 'OR',
-			array( 'key' => '_seoistic_robots', 'value' => 'noindex', 'compare' => '!=' ),
-			array( 'key' => '_seoistic_robots', 'compare' => 'NOT EXISTS' ),
+		$indexable_meta = array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+			'relation' => 'AND',
+			array(
+				'relation' => 'OR',
+				array( 'key' => '_seoistic_noindex', 'compare' => 'NOT EXISTS' ),
+				array( 'key' => '_seoistic_noindex', 'value' => '1', 'compare' => '!=' ),
+			),
+			array(
+				'relation' => 'OR',
+				array( 'key' => '_seoistic_robots', 'compare' => 'NOT EXISTS' ),
+				array( 'key' => '_seoistic_robots', 'value' => 'noindex', 'compare' => 'NOT LIKE' ),
+			),
 		);
+		if ( ! empty( $args['meta_query'] ) && is_array( $args['meta_query'] ) ) {
+			$indexable_meta[] = $args['meta_query'];
+		}
+		$args['meta_query'] = $indexable_meta;
 
 		$excluded_ids = self::settings()['excluded_ids'];
 		if ( array() !== $excluded_ids ) {

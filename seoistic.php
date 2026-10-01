@@ -4,7 +4,7 @@
  * Plugin Name:       SEOistic
  * Plugin URI:        https://seoistic.wpistic.com/
  * Description:       WordPress SEO suite: on-page analysis, schema, sitemaps, redirects, image SEO, WPistic AI-assisted optimization, and fast search-engine indexing — with a genuinely useful free tier.
- * Version:           1.6.4
+ * Version:           1.6.5
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            WordPressistic
@@ -22,7 +22,7 @@ if (! defined('ABSPATH')) {
 	exit;
 }
 
-define('SEOISTIC_VERSION', '1.6.4');
+define('SEOISTIC_VERSION', '1.6.5');
 define('SEOISTIC_DB_VERSION', '1.4.0');
 define('SEOISTIC_FILE', __FILE__);
 define('SEOISTIC_DIR', plugin_dir_path(__FILE__));
