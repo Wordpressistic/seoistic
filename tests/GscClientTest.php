@@ -92,6 +92,17 @@ class GscClientTest extends PHPUnit\Framework\TestCase
         $this->assertSame('client-id', $query['client_id']);
         $this->assertSame(GscClient::redirect_uri(), $query['redirect_uri']);
         $this->assertSame('https://www.googleapis.com/auth/webmasters.readonly', $query['scope']);
+        $this->assertSame('true', $query['include_granted_scopes']);
         $this->assertStringNotContainsString('%252F', $url);
+    }
+
+    public function testOAuthStatesDoNotOverwriteConcurrentConnections(): void
+    {
+        $first = GscSettings::new_oauth_state();
+        $second = GscSettings::new_oauth_state();
+
+        $this->assertTrue(GscSettings::consume_oauth_state($first));
+        $this->assertTrue(GscSettings::consume_oauth_state($second));
+        $this->assertFalse(GscSettings::consume_oauth_state($first));
     }
 }

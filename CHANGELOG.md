@@ -3,6 +3,18 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.6.4] - 2026-10-01
+
+### Fixed
+
+- Improve Google Search Console OAuth setup guidance for External/Production
+  apps and explain why Testing mode blocks unlisted Google accounts.
+- Isolate concurrent OAuth state tokens so one administrator cannot invalidate
+  another connection attempt.
+- Preserve an existing refresh token when Google returns an access token
+  without rotating the refresh token.
+- Include Google's granted-scope OAuth parameter and improve recovery guidance.
+
 ## [1.6.3] - 2026-10-01
 
 ### Fixed

@@ -66,7 +66,9 @@ if (! function_exists('wp_generate_uuid4')) {
 if (! function_exists('wp_generate_password')) {
     function wp_generate_password($length = 12, $special_chars = true, $extra_special_chars = false)
     {
-        return str_repeat('a', max(1, (int) $length));
+        static $calls = 0;
+        ++$calls;
+        return str_repeat(chr(96 + (($calls - 1) % 26) + 1), max(1, (int) $length));
     }
 }
 if (! function_exists('home_url')) {

@@ -22,7 +22,7 @@ final class GscSettings {
 	private const OPTION               = 'seoistic_gsc_options';
 	private const CLIENT_SECRET_OPTION = 'seoistic_gsc_client_secret_enc';
 	private const REFRESH_TOKEN_OPTION = 'seoistic_gsc_refresh_token_enc';
-	private const OAUTH_STATE_TRANSIENT = 'seoistic_gsc_oauth_state';
+	private const OAUTH_STATE_TRANSIENT_PREFIX = 'seoistic_gsc_oauth_state_';
 	private const PROPERTY_MISMATCH_TRANSIENT = 'seoistic_gsc_property_mismatch';
 
 	/**
@@ -119,16 +119,29 @@ final class GscSettings {
 	 * A short-lived CSRF token for the OAuth redirect round-trip — Google's
 	 * callback carries it back in `state`, checked against this before we ever
 	 * exchange the returned `code`.
+	 *
+	 * The transient is keyed by a hash of the state rather than stored under one
+	 * global option. Multiple administrators can therefore start OAuth flows at
+	 * the same time without one flow invalidating the other.
 	 */
 	public static function new_oauth_state(): string {
 		$state = wp_generate_password( 32, false );
-		set_transient( self::OAUTH_STATE_TRANSIENT, $state, 10 * MINUTE_IN_SECONDS );
+		set_transient( self::oauth_state_key( $state ), '1', 10 * MINUTE_IN_SECONDS );
 		return $state;
 	}
 
 	public static function consume_oauth_state( string $state ): bool {
-		$expected = get_transient( self::OAUTH_STATE_TRANSIENT );
-		delete_transient( self::OAUTH_STATE_TRANSIENT );
-		return is_string( $expected ) && '' !== $expected && hash_equals( $expected, $state );
+		if ( '' === $state ) {
+			return false;
+		}
+
+		$key   = self::oauth_state_key( $state );
+		$valid = '1' === get_transient( $key );
+		delete_transient( $key );
+		return $valid;
+	}
+
+	private static function oauth_state_key( string $state ): string {
+		return self::OAUTH_STATE_TRANSIENT_PREFIX . hash( 'sha256', $state );
 	}
 }

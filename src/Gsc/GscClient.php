@@ -35,6 +35,7 @@ final class GscClient {
 				'response_type' => 'code',
 				'scope'         => self::SCOPE,
 				'access_type'   => 'offline',
+				'include_granted_scopes' => 'true',
 				'prompt'        => 'consent',
 				'state'         => GscSettings::new_oauth_state(),
 			),
@@ -65,7 +66,7 @@ final class GscClient {
 
 		$body   = $this->decode_body( wp_remote_retrieve_body( $response ) );
 		$status = (int) wp_remote_retrieve_response_code( $response );
-		if ( $status < 200 || $status >= 300 || empty( $body['refresh_token'] ) ) {
+		if ( $status < 200 || $status >= 300 || empty( $body['access_token'] ) ) {
 			if ( $this->is_access_denied( $body ) ) {
 				return array(
 					'success'       => false,
@@ -77,14 +78,19 @@ final class GscClient {
 
 			$message = isset( $body['error_description'] ) && is_string( $body['error_description'] )
 				? $body['error_description']
-				: __( 'Google did not return a refresh token. Disconnect any prior authorization for this app at myaccount.google.com/permissions, then reconnect.', 'seoistic' );
+				: __( 'Google did not return an access token. Check the OAuth client configuration, then reconnect.', 'seoistic' );
 			return array( 'success' => false, 'error' => $message );
 		}
 
-		GscSettings::set_refresh_token( (string) $body['refresh_token'] );
-		if ( ! empty( $body['access_token'] ) ) {
-			$this->store_access_token( (string) $body['access_token'], (int) ( $body['expires_in'] ?? 3500 ) );
+		if ( ! empty( $body['refresh_token'] ) ) {
+			GscSettings::set_refresh_token( (string) $body['refresh_token'] );
+		} elseif ( '' === GscSettings::refresh_token() ) {
+			return array(
+				'success' => false,
+				'error'   => __( 'Google did not return a refresh token. Revoke the previous SEOistic authorization at myaccount.google.com/permissions, then reconnect.', 'seoistic' ),
+			);
 		}
+		$this->store_access_token( (string) $body['access_token'], (int) ( $body['expires_in'] ?? 3500 ) );
 		return array( 'success' => true );
 	}
 
