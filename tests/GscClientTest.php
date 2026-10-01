@@ -83,4 +83,15 @@ class GscClientTest extends PHPUnit\Framework\TestCase
         $this->assertTrue($result['data']['property_match']);
         $this->assertTrue(GscSettings::property_match());
     }
+
+    public function testAuthorizeUrlDoesNotDoubleEncodeOauthValues(): void
+    {
+        $url = (new GscClient())->authorize_url();
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+
+        $this->assertSame('client-id', $query['client_id']);
+        $this->assertSame(GscClient::redirect_uri(), $query['redirect_uri']);
+        $this->assertSame('https://www.googleapis.com/auth/webmasters.readonly', $query['scope']);
+        $this->assertStringNotContainsString('%252F', $url);
+    }
 }

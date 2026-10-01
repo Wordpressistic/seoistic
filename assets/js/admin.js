@@ -26,14 +26,7 @@
 			},
 			body: JSON.stringify( body ),
 		} ).then( function ( r ) {
-			return r.json().then( function ( json ) {
-				if ( ! r.ok ) {
-					var err = new Error( ( json && json.message ) || 'Request failed' );
-					err.data = json && json.data ? json.data : {};
-					throw err;
-				}
-				return json;
-			} );
+			return parseRestResponse( r );
 		} );
 	};
 
@@ -47,16 +40,40 @@
 			signal: signal || undefined,
 			headers: { 'X-WP-Nonce': window.SeoisticAdmin.restNonce },
 		} ).then( function ( r ) {
-			return r.json().then( function ( json ) {
-				if ( ! r.ok ) {
-					var err = new Error( ( json && json.message ) || 'Request failed' );
-					err.data = json && json.data ? json.data : {};
-					throw err;
-				}
-				return json;
-			} );
+			return parseRestResponse( r );
 		} );
 	};
+
+	/**
+	 * WordPress can return an HTML fatal-error page when a callback throws.
+	 * Never pass that document into a card/toast: it is unsafe to display and
+	 * makes the actual action failure impossible to understand.
+	 */
+	function parseRestResponse( response ) {
+		return response.text().then( function ( text ) {
+			var json = null;
+			try {
+				json = text ? JSON.parse( text ) : null;
+			} catch ( parseError ) {
+				json = null;
+			}
+
+			if ( ! response.ok ) {
+				var message = json && json.message ? json.message : 'The server returned an unexpected error. Please check the SEOistic error log.';
+				var err = new Error( message );
+				err.data = json && json.data ? json.data : {};
+				err.status = response.status;
+				throw err;
+			}
+
+			if ( ! json || typeof json !== 'object' ) {
+				var invalid = new Error( 'The server returned an invalid response. Please try again.' );
+				invalid.status = response.status;
+				throw invalid;
+			}
+			return json;
+		} );
+	}
 
 	/* ---------------------------------------------------------------- */
 	/* Toasts                                                            */

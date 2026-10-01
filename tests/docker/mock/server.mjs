@@ -2,7 +2,8 @@
  * Local stand-in for the WPistic platform used by the SEOistic docker test stack.
  *
  * Implements the exact public contracts the plugin speaks:
- *   Licenseistic  POST /wp-json/licenseistic/v1/license/{activate,ping,deactivate}
+ *   WPistic       POST /api/v1/licenses/{activate,validate,deactivate}
+ *   Legacy        POST /wp-json/licenseistic/v1/license/{activate,ping,deactivate}
  *   AI gateway    POST /v1/license/chat   → proxied to the host's Ollama so the
  *                                            metered path runs a real local model.
  *
@@ -35,6 +36,22 @@ const LICENSE_DATA = {
   product_id: 1,
   plan: 'agency',
   seats: 5,
+};
+
+const CANONICAL_LICENSE_DATA = {
+  valid: true,
+  status: 'active',
+  product: 'seoistic',
+  plan: 'agency',
+  expires_at: '2027-12-31 23:59:59',
+  activation: { id: 'test-activation', domain: 'example.com', environment: 'production' },
+  entitlements: { 'seoistic.sites.max': 5 },
+  updates: { channel: 'stable', allowed: true },
+  check_after: 43200,
+  grace_period_days: 7,
+  signature: 'test-signature',
+  activation_token: 'test-activation-token-1234567890',
+  verification_key: 'test-verification-key-1234567890',
 };
 
 function send(res, status, body) {
@@ -109,6 +126,18 @@ function cannedContent(task) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   const path = url.pathname;
+
+  if (path.startsWith('/api/v1/licenses/')) {
+    const action = path.split('/').pop();
+    await readBody(req);
+    if (action === 'activate' || action === 'validate') {
+      return send(res, 200, CANONICAL_LICENSE_DATA);
+    }
+    if (action === 'deactivate') {
+      return send(res, 200, { deactivated: true });
+    }
+    return send(res, 404, { error: { code: 'not_found', message: 'unknown action' } });
+  }
 
   if (path.startsWith('/wp-json/licenseistic/v1/license/')) {
     const action = path.split('/').pop();

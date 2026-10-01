@@ -37,8 +37,13 @@ final class ProxyClient {
 
 		$body = array_merge(
 			array(
-				'license_key' => $key,
-				'site_url'    => home_url( '/' ),
+				'license_key'      => $key,
+				'activation_token'  => $this->license->activation_token(),
+				'domain'            => $this->license->domain(),
+				'environment'       => $this->license->environment(),
+				'installation_uuid' => $this->license->installation_uuid(),
+				'plugin_version'    => defined( 'SEOISTIC_VERSION' ) ? SEOISTIC_VERSION : '',
+				'site_url'          => home_url( '/' ),
 			),
 			$payload
 		);
@@ -73,6 +78,15 @@ final class ProxyClient {
 		}
 		$decoded = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 		if ( $status < 200 || $status >= 300 || ! is_array( $decoded ) ) {
+			$remote_error = is_array( $decoded ) && is_array( $decoded['error'] ?? null ) ? $decoded['error'] : array();
+			$remote_code = sanitize_key( (string) ( $remote_error['code'] ?? '' ) );
+			if ( 404 === $status || 'not_found' === $remote_code || 'search_not_configured' === $remote_code ) {
+				return new WP_Error(
+					'seoistic_proxy_unavailable',
+					__( 'The WPistic Search API is not available yet. Connect Google Search Console or configure a Search API provider, then try again.', 'seoistic' ),
+					array( 'status' => 503, 'remote_code' => $remote_code )
+				);
+			}
 			return new WP_Error(
 				'seoistic_proxy_error',
 				__( 'The WPistic service is temporarily unavailable. Please try again shortly.', 'seoistic' ),

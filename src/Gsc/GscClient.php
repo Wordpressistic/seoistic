@@ -27,10 +27,13 @@ final class GscClient {
 	public function authorize_url(): string {
 		return add_query_arg(
 			array(
-				'client_id'     => rawurlencode( GscSettings::client_id() ),
-				'redirect_uri'  => rawurlencode( self::redirect_uri() ),
+				// add_query_arg() performs query-string encoding itself. Encoding
+				// these values first produces a double-encoded redirect URI and
+				// causes Google to reject an otherwise correct OAuth client.
+				'client_id'     => GscSettings::client_id(),
+				'redirect_uri'  => self::redirect_uri(),
 				'response_type' => 'code',
-				'scope'         => rawurlencode( self::SCOPE ),
+				'scope'         => self::SCOPE,
 				'access_type'   => 'offline',
 				'prompt'        => 'consent',
 				'state'         => GscSettings::new_oauth_state(),

@@ -99,6 +99,9 @@ final class RankTrackerPage {
 		}
 		$result = $this->service->run_daily( true );
 		$args = array( 'page' => 'seoistic-rank-tracker', 'updated' => is_wp_error( $result ) ? 'run-error' : 'run' );
+		if ( is_wp_error( $result ) ) {
+			$args['error_code'] = sanitize_key( (string) $result->get_error_code() );
+		}
 		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
 		exit;
 	}
@@ -129,18 +132,28 @@ final class RankTrackerPage {
 
 	private function notice(): void {
 		$message = (string) ( $_GET['updated'] ?? '' );
+		$error_code = sanitize_key( (string) ( $_GET['error_code'] ?? '' ) );
 		$messages = array(
 			'settings' => __( 'Rank Tracker settings saved.', 'seoistic' ),
 			'keyword' => __( 'Keyword saved.', 'seoistic' ),
 			'deleted' => __( 'Keyword deleted.', 'seoistic' ),
 			'run' => __( 'Rank batch completed.', 'seoistic' ),
-			'run-error' => __( 'The rank batch could not finish. Check the license or connection and try again.', 'seoistic' ),
+			'run-error' => $this->rank_error_message( $error_code ),
 			'report-sent' => __( 'Report email sent.', 'seoistic' ),
 			'report-error' => __( 'Report email could not be sent.', 'seoistic' ),
 		);
 		if ( isset( $messages[ $message ] ) ) {
 			echo '<div class="notice notice-' . ( str_contains( $message, 'error' ) ? 'error' : 'success' ) . ' is-dismissible"><p>' . esc_html( $messages[ $message ] ) . '</p></div>';
 		}
+	}
+
+	private function rank_error_message( string $error_code ): string {
+		return match ( $error_code ) {
+			'seoistic_proxy_license_invalid' => __( 'The connected SEOistic license was not accepted by the WPistic service. Revalidate the license, then try again.', 'seoistic' ),
+			'seoistic_proxy_unavailable', 'seoistic_proxy_error' => __( 'The WPistic Search API is unavailable. Select Search Console data (delayed), or configure the Search API provider before running this mode.', 'seoistic' ),
+			'seoistic_rank_tracker_gsc_failed', 'seoistic_gsc_not_connected' => __( 'Connect Google Search Console and select the verified brothertours.com property before running Rank Tracker in Search Console mode.', 'seoistic' ),
+			default => __( 'The rank batch could not finish. Check the license or connection and try again.', 'seoistic' ),
+		};
 	}
 
 	private function render_toolbar( array $settings ): void {
@@ -192,6 +205,7 @@ final class RankTrackerPage {
 		echo '<label><input type="checkbox" name="enabled"' . checked( $settings['enabled'], true, false ) . '> ' . esc_html__( 'Enable daily checks', 'seoistic' ) . '</label>';
 		echo '<label><input type="radio" name="mode" value="search_api"' . checked( $settings['mode'], 'search_api', false ) . '> ' . esc_html__( 'WPistic Search API', 'seoistic' ) . '</label>';
 		echo '<label><input type="radio" name="mode" value="gsc"' . checked( $settings['mode'], 'gsc', false ) . '> ' . esc_html__( 'Search Console data (delayed)', 'seoistic' ) . '</label>';
+		echo '<p class="description">' . esc_html__( 'Search Console mode is the working first-party option and uses Google’s delayed query data. WPistic Search API mode requires an enabled SERP provider on the WPistic gateway.', 'seoistic' ) . '</p>';
 		echo '<label>' . esc_html__( 'Batch size', 'seoistic' ) . '<input type="number" name="batch_size" min="1" max="50" value="' . esc_attr( (string) $settings['batch_size'] ) . '"></label>';
 		echo '<label><input type="checkbox" name="report_enabled"' . checked( $settings['report_enabled'], true, false ) . '> ' . esc_html__( 'Send weekly HTML email', 'seoistic' ) . '</label>';
 		echo '<label>' . esc_html__( 'Recipient', 'seoistic' ) . '<input type="email" name="report_email" value="' . esc_attr( $settings['report_email'] ) . '"></label>';
