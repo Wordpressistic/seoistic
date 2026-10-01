@@ -3,6 +3,13 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.6.3] - 2026-10-01
+
+### Fixed
+
+- Import `WP_REST_Server` in the AI Search addon so Gutenberg REST preloading
+  cannot fatal during WordPress admin bootstrap.
+
 ## [1.6.2] - 2026-10-01
 
 ### Fixed

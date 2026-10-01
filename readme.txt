@@ -4,7 +4,7 @@ Tags: seo, schema, sitemap, redirects, indexing
 Requires at least: 6.4
 Tested up to: 6.4
 Requires PHP: 8.1
-Stable tag: 1.6.2
+Stable tag: 1.6.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -111,6 +111,9 @@ screenshot-N.png convention before a .org submission.)
 
 See CHANGELOG.md in the plugin's source repository for the full history.
 Highlights for this release are below.
+
+= 1.6.3 =
+* Fix the AI Search REST registration fatal that could block the WordPress admin dashboard on sites using Gutenberg REST preloading.
 
 = 1.6.2 =
 * Fix canonical activation-token context for WPistic AI and Search API requests.
