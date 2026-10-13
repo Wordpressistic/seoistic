@@ -74,9 +74,10 @@ jobs:
       - name: Clean install and real WordPress entitlement checks
         working-directory: /tmp/seoistic-wp
         run: |
+          EXPECTED_VERSION="$(sed -n 's/^ \* Version:[[:space:]]*//p' "$GITHUB_WORKSPACE/seoistic.php" | head -1 | tr -d '\r')"
           wp plugin install /tmp/seoistic-build.zip --activate
           test "$(wp plugin get seoistic --field=status)" = active
-          test "$(wp plugin get seoistic --field=version)" = 1.6.5
+          test "$(wp plugin get seoistic --field=version)" = "$EXPECTED_VERSION"
           wp eval-file "$GITHUB_WORKSPACE/tests/wordpress-entitlements.php"
       - name: Upgrade from public 1.5.2 preserving SEO metadata
         working-directory: /tmp/seoistic-wp
