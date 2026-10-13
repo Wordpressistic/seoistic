@@ -349,13 +349,15 @@ final class MigrationModule extends AbstractModule {
 			return null;
 		}
 		if ( is_string( $raw ) && str_starts_with( $raw, 'a:' ) ) {
-			$unserialized = @unserialize( $raw ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.PHP.DiscouragedPHPFunctions
+			// No allowed classes: legacy Yoast meta only ever holds plain arrays,
+			// and object instantiation from stored meta is never wanted here.
+			$unserialized = @unserialize( $raw, array( 'allowed_classes' => false ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.PHP.DiscouragedPHPFunctions
 			if ( is_array( $unserialized ) ) {
 				return in_array( 'noindex', $unserialized, true );
 			}
 			return null;
 		}
-		return in_array( (string) $raw, array( '1', '2' ), true );
+		return in_array( (string) $raw, array( '1' ), true );
 	}
 
 	private function run_schema_batch( int $offset ): void {
