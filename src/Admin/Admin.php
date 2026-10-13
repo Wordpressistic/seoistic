@@ -28,23 +28,26 @@ final class Admin {
 	 * @var array<string, list<string>>
 	 */
 	private const CATEGORIES = array(
-		'schema'         => array( 'technical' ),
-		'local'          => array( 'local' ),
-		'woocommerce'    => array( 'woocommerce' ),
-		'image'          => array( 'technical' ),
-		'redirects'      => array( 'technical' ),
-		'links'          => array( 'technical' ),
-		'sitemap_extras' => array( 'technical' ),
-		'social'         => array( 'technical' ),
-		'migration'      => array( 'technical' ),
-		'audit'          => array( 'technical' ),
-		'indexistic'     => array( 'indexing', 'technical' ),
-		'ai'             => array( 'ai' ),
-		'ai_search'      => array( 'ai', 'technical' ),
-		'rank_tracker'   => array(),
-		'schema_pro'     => array( 'technical' ),
-		'performance'    => array( 'technical' ),
-		'gsc'            => array( 'technical' ),
+		'schema'             => array( 'technical' ),
+		'local'              => array( 'local' ),
+		'woocommerce'        => array( 'woocommerce' ),
+		'image'              => array( 'technical' ),
+		'redirects'          => array( 'technical' ),
+		'links'              => array( 'technical' ),
+		'sitemap_extras'     => array( 'technical' ),
+		'social'             => array( 'technical' ),
+		'migration'          => array( 'technical' ),
+		'audit'              => array( 'technical' ),
+		'indexistic'         => array( 'indexing', 'technical' ),
+		'ai'                 => array( 'ai' ),
+		'ai_search'          => array( 'ai', 'technical' ),
+		'rank_tracker'       => array(),
+		'schema_pro'         => array( 'technical' ),
+		'performance'        => array( 'technical' ),
+		'gsc'                => array( 'technical' ),
+		'connections'        => array( 'technical' ),
+		'business_automator' => array( 'ai' ),
+		'uptime'             => array( 'technical' ),
 	);
 
 	public function __construct( private ModuleRegistry $registry ) {}
@@ -488,9 +491,12 @@ final class Admin {
 		$offset     = isset( $_POST['offset'] ) ? absint( $_POST['offset'] ) : 0;
 		$batch_size = 20;
 
+		$audit_types = get_post_types( array( 'public' => true ) );
+		unset( $audit_types['attachment'] ); // Media items aren't SEO pages.
+
 		$ids = get_posts(
 			array(
-				'post_type'      => get_post_types( array( 'public' => true ) ),
+				'post_type'      => $audit_types,
 				'post_status'    => 'publish',
 				'fields'         => 'ids',
 				'orderby'        => 'ID',
@@ -505,7 +511,7 @@ final class Admin {
 		}
 
 		$total_public = 0;
-		foreach ( get_post_types( array( 'public' => true ) ) as $post_type ) {
+		foreach ( $audit_types as $post_type ) {
 			$total_public += (int) ( wp_count_posts( $post_type )->publish ?? 0 );
 		}
 		$next_offset = $offset + count( $ids );
@@ -625,48 +631,120 @@ final class Admin {
 		$current = Entitlement::plan();
 		$client  = new LicenseClient();
 
-		View::header( 'seoistic-pricing', __( 'Upgrade', 'seoistic' ), __( 'See the full plan comparison and manage your subscription on the SEOistic website.', 'seoistic' ) );
+		View::header( 'seoistic-pricing', __( 'Upgrade', 'seoistic' ), __( 'Unlock every premium addon with one Pro license — checkout opens right here, licensed automatically after payment.', 'seoistic' ) );
 
 		$this->render_plan_summary( $current, $client );
 		?>
-		<div class="seoistic-section-title"><?php esc_html_e( 'Plan comparison', 'seoistic' ); ?></div>
-		<p class="description" style="margin:-8px 0 16px;"><?php esc_html_e( 'For reference only — pricing and features are kept current on the SEOistic website; use "View plans and pricing" above for the latest.', 'seoistic' ); ?></p>
+		<div class="seoistic-section-title"><?php esc_html_e( 'Plans', 'seoistic' ); ?></div>
 		<div class="seoistic-pricing-grid">
 			<?php foreach ( Plans::tiers() as $id => $tier ) : ?>
-				<div class="seoistic-plan<?php echo ! empty( $tier['featured'] ) ? ' featured' : ''; ?><?php echo $id === $current ? ' current' : ''; ?>">
+				<?php
+				$is_current = 'free' === $id && 'free' === $current;
+				$is_owned   = 'pro' === $id && Plans::rank( $current ) >= Plans::rank( 'pro' );
+				?>
+				<div class="seoistic-plan<?php echo ! empty( $tier['featured'] ) ? ' featured' : ''; ?><?php echo $is_current ? ' current' : ''; ?>">
 					<?php if ( ! empty( $tier['featured'] ) ) : ?><span class="seoistic-plan-flag"><?php esc_html_e( 'Main plan', 'seoistic' ); ?></span><?php endif; ?>
-					<h2><?php echo esc_html( $tier['name'] ); ?></h2>
-					<p class="seoistic-plan-price"><?php echo 0 === $tier['price'] ? esc_html__( 'Free', 'seoistic' ) : '$' . (int) $tier['price']; ?> <span>/<?php esc_html_e( 'year', 'seoistic' ); ?></span></p>
+					<h2><?php echo esc_html( (string) $tier['name'] ); ?></h2>
+					<p class="seoistic-plan-price"><?php echo 0 === (int) $tier['price'] ? esc_html__( 'Free', 'seoistic' ) : '$' . (int) $tier['price']; ?> <span>/<?php esc_html_e( 'year', 'seoistic' ); ?></span></p>
 					<p class="seoistic-plan-sites"><?php echo esc_html( is_int( $tier['sites'] ) ? sprintf( _n( '%d site', '%d sites', $tier['sites'], 'seoistic' ), $tier['sites'] ) : (string) $tier['sites'] ); ?></p>
 					<ul>
-						<?php foreach ( (array) $tier['features'] as $feature ) : ?><li><?php echo esc_html( $feature ); ?></li><?php endforeach; ?>
+						<?php foreach ( (array) $tier['features'] as $feature ) : ?><li><?php echo esc_html( (string) $feature ); ?></li><?php endforeach; ?>
 					</ul>
-					<?php if ( $id === $current ) : ?>
+					<?php if ( $is_current || $is_owned ) : ?>
 						<span class="seoistic-btn is-disabled"><?php esc_html_e( 'Current plan', 'seoistic' ); ?></span>
-					<?php elseif ( 'free' !== $id ) : ?>
-						<a class="seoistic-btn <?php echo ! empty( $tier['featured'] ) ? 'seoistic-btn-gold' : 'seoistic-btn-primary'; ?>" href="<?php echo esc_url( (string) apply_filters( 'seoistic_upgrade_url', Links::pricing_url(), $id ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Upgrade', 'seoistic' ); ?></a>
-					<?php else : ?>
-						<span class="seoistic-btn is-disabled"><?php esc_html_e( 'Current plan', 'seoistic' ); ?></span>
+					<?php elseif ( ! empty( $tier['price_id'] ) ) : ?>
+						<button type="button" class="seoistic-btn <?php echo ! empty( $tier['featured'] ) ? 'seoistic-btn-gold' : 'seoistic-btn-primary'; ?>" data-seoistic-checkout="<?php echo esc_attr( (string) $tier['price_id'] ); ?>" data-plan-name="<?php echo esc_attr( (string) $tier['name'] ); ?>"><?php echo ! empty( $tier['bundle'] ) ? esc_html__( 'Get All-Access', 'seoistic' ) : esc_html__( 'Buy Now', 'seoistic' ); ?></button>
+						<p class="description" style="margin-top:8px;"><?php esc_html_e( 'Secure Paddle checkout — cards, PayPal, Apple Pay. Your license key is issued automatically.', 'seoistic' ); ?></p>
 					<?php endif; ?>
-					<?php if ( ! empty( $tier['note'] ) ) : ?><p class="seoistic-plan-note"><?php echo esc_html( $tier['note'] ); ?></p><?php endif; ?>
+					<?php if ( ! empty( $tier['note'] ) ) : ?><p class="seoistic-plan-note"><?php echo esc_html( (string) $tier['note'] ); ?></p><?php endif; ?>
 				</div>
 			<?php endforeach; ?>
 		</div>
 
-		<div class="seoistic-section-title"><?php esc_html_e( 'Lifetime deals — limited launch offer', 'seoistic' ); ?></div>
+		<div class="seoistic-section-title"><?php esc_html_e( 'Lifetime deal — limited launch offer', 'seoistic' ); ?></div>
 		<div class="seoistic-ltd-grid">
-			<?php foreach ( Plans::lifetime() as $ltd_slug => $ltd ) : ?>
-				<?php $ltd_slug = is_string( $ltd_slug ) ? $ltd_slug : sanitize_title( $ltd['name'] ); ?>
+			<?php foreach ( Plans::lifetime() as $ltd ) : ?>
 				<div class="seoistic-ltd-card">
-					<h3><?php echo esc_html( $ltd['name'] ); ?></h3>
+					<h3><?php echo esc_html( (string) $ltd['name'] ); ?></h3>
 					<p class="seoistic-ltd-price">$<?php echo (int) $ltd['price']; ?> <span style="font-size:12px;font-weight:500;color:var(--seoistic-muted);"><?php esc_html_e( 'one-time', 'seoistic' ); ?></span></p>
-					<p class="seoistic-ltd-meta"><?php echo esc_html( sprintf( _n( '%d site', '%d sites', $ltd['sites'], 'seoistic' ), $ltd['sites'] ) ); ?> · <?php echo esc_html( $ltd['limit'] ); ?></p>
-					<p style="margin-top:14px;"><a class="seoistic-btn seoistic-btn-primary" href="<?php echo esc_url( (string) apply_filters( 'seoistic_upgrade_url', Links::pricing_url(), $ltd_slug ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Get the deal', 'seoistic' ); ?></a></p>
+					<p class="seoistic-ltd-meta"><?php echo esc_html( (string) $ltd['limit'] ); ?></p>
+					<p style="margin-top:14px;"><button type="button" class="seoistic-btn seoistic-btn-primary" data-seoistic-checkout="<?php echo esc_attr( (string) $ltd['price_id'] ); ?>" data-plan-name="<?php echo esc_attr( (string) $ltd['name'] ); ?>"><?php esc_html_e( 'Get the deal', 'seoistic' ); ?></button></p>
 				</div>
 			<?php endforeach; ?>
 		</div>
+
+		<p style="margin-top:24px;">
+			<a class="seoistic-btn seoistic-btn-ghost" href="<?php echo esc_url( Links::pricing_url() ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Compare every plan on wordpressistic.com', 'seoistic' ); ?> <span class="dashicons dashicons-external" aria-hidden="true" style="font-size:13px;width:13px;height:13px;vertical-align:-1px;"></span></a>
+			<a class="seoistic-btn seoistic-btn-ghost" href="<?php echo esc_url( admin_url( 'admin.php?page=seoistic-license' ) ); ?>"><?php esc_html_e( 'Already have a license? Activate it', 'seoistic' ); ?></a>
+		</p>
 		<?php
+		$this->render_checkout_script();
 		View::footer();
+	}
+
+	/**
+	 * Paddle.js overlay checkout for the buy buttons above. The client-side
+	 * token is a public identifier (same one wordpressistic.com uses); the
+	 * license itself is issued server-side by the Paddle webhook on
+	 * api.wpistic.com, so nothing here can be abused to grant access.
+	 */
+	private function render_checkout_script(): void {
+		$email = (string) get_option( 'admin_email' );
+		?>
+		<script src="https://cdn.paddle.com/paddle/v2/paddle.js" async></script>
+		<script>
+		( function () {
+			var TOKEN = '<?php echo esc_js( Plans::CHECKOUT['token'] ); ?>';
+			var EMAIL = '<?php echo esc_js( $email ); ?>';
+			var paddleReady = false;
+
+			function paddle() {
+				if ( paddleReady ) { return Promise.resolve( window.Paddle ); }
+				return new Promise( function ( resolve, reject ) {
+					var attempts = 0;
+					( function wait() {
+						if ( window.Paddle && window.Paddle.Initialize ) {
+							if ( ! paddleReady ) {
+								try {
+									// Paddle.js v2: production is the default environment
+									// ('live' is not a valid value) — just initialize.
+									window.Paddle.Initialize( { token: TOKEN } );
+									paddleReady = true;
+								} catch ( e ) { /* already initialized */ paddleReady = true; }
+							}
+							resolve( window.Paddle );
+							return;
+						}
+						if ( ++attempts > 100 ) { reject( new Error( 'Paddle.js unavailable' ) ); return; }
+						window.setTimeout( wait, 100 );
+					} )();
+				} );
+			}
+
+			document.addEventListener( 'click', function ( event ) {
+				var btn = event.target.closest( '[data-seoistic-checkout]' );
+				if ( ! btn ) { return; }
+				event.preventDefault();
+				var priceId = btn.getAttribute( 'data-seoistic-checkout' );
+				var planName = btn.getAttribute( 'data-plan-name' ) || 'SEOistic Pro';
+				paddle().then( function ( P ) {
+					P.Checkout.open( {
+						items: [ { priceId: priceId, quantity: 1 } ],
+						customer: EMAIL ? { email: EMAIL } : undefined,
+						settings: {
+							displayMode: 'overlay',
+							theme: 'light',
+							successUrl: '<?php echo esc_js( admin_url( 'admin.php?page=seoistic-license' ) ); ?>'
+						}
+					} );
+				} ).catch( function () {
+					// Overlay unavailable (ad-blocker, offline) — fall through to the website.
+					window.location.href = '<?php echo esc_js( Plans::CHECKOUT['pricing_page'] ); ?>';
+				} );
+			} );
+		} )();
+		</script>
+		<?php
 	}
 
 	/**

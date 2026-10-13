@@ -36,7 +36,7 @@ final class BusinessAutomatorModule extends AbstractModule {
 	}
 
 	public function tier(): string {
-		return 'business';
+		return 'premium';
 	}
 
 	public function status(): string {
@@ -48,6 +48,9 @@ final class BusinessAutomatorModule extends AbstractModule {
 	}
 
 	public function register(): void {
+		if (is_admin()) {
+			( new \Wpistic\Seoistic\Admin\BusinessAutomatorPage() )->register();
+		}
 		add_action('init', function (): void {
 			if (!get_option(RecipeEngine::RECIPES_OPTION, false)) {
 				$this->engine->install_starters();
@@ -80,6 +83,10 @@ final class BusinessAutomatorModule extends AbstractModule {
 
 	public function license_event(string $event = ''): void {
 		if ('activated' !== $event) {
+			return;
+		}
+		$recipe = $this->engine->recipe('llms_txt_refresh');
+		if (!$recipe || empty($recipe['enabled'])) {
 			return;
 		}
 		$this->engine->run('llms_txt_refresh', 'license_event');

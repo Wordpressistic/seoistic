@@ -209,6 +209,9 @@
 			}
 			restPost('/aeo/audit', { post_id: postId }).then(function (json) {
 				renderAudit(box, json.data || {});
+				if (window.seoisticRefreshCredits && json.data && json.data.usage) {
+					window.seoisticRefreshCredits(json.data.usage);
+				}
 				if (tracker) {
 					tracker.finish((json.data && Number(json.data.score || 0)) + '/100');
 				}

@@ -42,7 +42,7 @@ final class RecipeEngine {
 				'trigger' => 'schedule',
 				'schedule' => 'weekly',
 				'steps' => array('audit', 'ai_draft', 'approval', 'apply', 'notify'),
-				'enabled' => true,
+				'enabled' => false,
 				'auto_apply' => false,
 			),
 			'new_post_seo_polish' => array(
@@ -51,7 +51,7 @@ final class RecipeEngine {
 				'description' => __('Drafts title, description, and focus keyword suggestions when content is saved.', 'seoistic'),
 				'trigger' => 'content_saved',
 				'steps' => array('audit', 'ai_draft', 'approval', 'apply'),
-				'enabled' => true,
+				'enabled' => false,
 				'auto_apply' => false,
 			),
 			'freshness_monitor' => array(
@@ -61,7 +61,7 @@ final class RecipeEngine {
 				'trigger' => 'schedule',
 				'schedule' => 'weekly',
 				'steps' => array('audit', 'ai_draft', 'approval', 'notify'),
-				'enabled' => true,
+				'enabled' => false,
 				'auto_apply' => false,
 			),
 			'schema_reminder' => array(
@@ -71,7 +71,7 @@ final class RecipeEngine {
 				'trigger' => 'schedule',
 				'schedule' => 'weekly',
 				'steps' => array('audit', 'approval', 'notify'),
-				'enabled' => true,
+				'enabled' => false,
 				'auto_apply' => false,
 			),
 			'llms_txt_refresh' => array(
@@ -81,7 +81,7 @@ final class RecipeEngine {
 				'trigger' => 'schedule',
 				'schedule' => 'weekly',
 				'steps' => array('audit', 'approval', 'apply', 'notify'),
-				'enabled' => true,
+				'enabled' => false,
 				'auto_apply' => false,
 			),
 		);
@@ -129,7 +129,8 @@ final class RecipeEngine {
 
 		try {
 			$recipe = $this->recipe($recipeId);
-			if (!$recipe || !$recipe['enabled'] || $recipe['trigger'] !== $trigger) {
+			$trigger_ok = $recipe && ($recipe['trigger'] === $trigger || ('schedule' === $recipe['trigger'] && 'license_event' === $trigger));
+			if (!$recipe || empty($recipe['enabled']) || !$trigger_ok) {
 				return array('run_id' => '', 'status' => 'skipped');
 			}
 

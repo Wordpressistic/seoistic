@@ -37,7 +37,11 @@ final class SeoMetabox {
 	}
 
 	public function add_box(): void {
-		foreach ( get_post_types( array( 'public' => true ) ) as $post_type ) {
+		// Attachments have their own media workflow; the SEO panel targets
+		// content pages — excluding them keeps totals consistent everywhere.
+		$post_types = get_post_types( array( 'public' => true ) );
+		unset( $post_types['attachment'] );
+		foreach ( $post_types as $post_type ) {
 			add_meta_box( 'seoistic_seo_panel', __( 'SEOISTIC — SEO', 'seoistic' ), array( $this, 'render' ), $post_type, 'normal', 'high' );
 			add_meta_box( 'seoistic_score_side', __( 'SEOISTIC — SEO Score', 'seoistic' ), array( $this, 'render_score_side' ), $post_type, 'side', 'high' );
 		}

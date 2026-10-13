@@ -127,16 +127,27 @@ final class ContentInventoryPage {
 	 * @return array<int|string, mixed>
 	 */
 	private function filter_meta_query( string $filter ): array {
-		$missing = static fn( string $key ): array => array(
-			'relation' => 'OR',
-			array( 'key' => $key, 'compare' => 'NOT EXISTS' ),
-			array( 'key' => $key, 'value' => '', 'compare' => '=' ),
+		// Match DashboardMetrics/PostSeo: both the current and the pre-upgrade
+		// meta keys count as "set", otherwise upgraded sites see different
+		// counts on the dashboard vs this inventory.
+		$missing = static fn( string $key, string $legacy = '' ): array => array(
+			'relation' => 'AND',
+			array(
+				'relation' => 'OR',
+				array( 'key' => $key, 'compare' => 'NOT EXISTS' ),
+				array( 'key' => $key, 'value' => '', 'compare' => '=' ),
+			),
+			array(
+				'relation' => 'OR',
+				array( 'key' => $legacy, 'compare' => 'NOT EXISTS' ),
+				array( 'key' => $legacy, 'value' => '', 'compare' => '=' ),
+			),
 		);
 
 		return match ( $filter ) {
-			'missing_meta'    => array( $missing( '_seoistic_description' ) ),
+			'missing_meta'    => array( $missing( '_seoistic_description', '_seoistic_desc' ) ),
 			'missing_title'   => array( $missing( '_seoistic_title' ) ),
-			'missing_keyword' => array( $missing( '_seoistic_focus_keyword' ) ),
+			'missing_keyword' => array( $missing( '_seoistic_focus_keyword', '_seoistic_focus_kw' ) ),
 			'unscored'        => array( array( 'key' => '_seoistic_score', 'compare' => 'NOT EXISTS' ) ),
 			'critical'        => array( array( 'key' => '_seoistic_score', 'value' => 50, 'compare' => '<', 'type' => 'NUMERIC' ) ),
 			'needs_work'      => array( array( 'key' => '_seoistic_score', 'value' => array( 50, 79 ), 'compare' => 'BETWEEN', 'type' => 'NUMERIC' ) ),

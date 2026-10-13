@@ -78,8 +78,13 @@ final class AiCrawlerStore {
 	 */
 	public function dashboard( int $days = 30 ): array {
 		$data = $this->normalized();
+		$before = wp_json_encode( $data );
 		$this->compact( $data );
-		update_option( self::OPTION, $data, false );
+		// Persist only when compaction actually pruned something — this runs on
+		// every admin page view and must not be an unconditional write.
+		if ( wp_json_encode( $data ) !== $before ) {
+			update_option( self::OPTION, $data, false );
+		}
 
 		$cutoff = gmdate( 'Y-m-d', (int) current_time( 'timestamp', true ) - ( max( 1, min( self::WINDOW, $days ) ) - 1 ) * DAY_IN_SECONDS );
 		$total = 0;

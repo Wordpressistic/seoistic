@@ -25,9 +25,18 @@
 	function initQuickWins() {
 		document.querySelectorAll( '[data-seoistic-quick-win-preview]' ).forEach( function ( button ) {
 			button.addEventListener( 'click', function () {
-				runRest( button, '/performance/quick-wins/preview', { action: getAction( button, 'data-seoistic-quick-win-preview' ) }, true );
+				// No reload here: the preview stores a token this page needs for
+				// Apply — a reload would wipe it before the user can confirm.
+				runRest( button, '/performance/quick-wins/preview', { action: getAction( button, 'data-seoistic-quick-win-preview' ) }, false );
 			} );
 		} );
+		try {
+			if ( window.sessionStorage ) {
+				previewTokens = JSON.parse( window.sessionStorage.getItem( 'seoisticQuickWinTokens' ) || '{}' ) || {};
+			}
+		} catch ( error ) {
+			previewTokens = {};
+		}
 		document.querySelectorAll( '[data-seoistic-quick-win-apply]' ).forEach( function ( button ) {
 			button.addEventListener( 'click', function () {
 				runRest( button, '/performance/quick-wins/apply', {
@@ -58,12 +67,22 @@
 			var data = json.data || {};
 			if ( data.preview_token ) {
 				previewTokens[ body.action ] = data.preview_token;
+				try {
+					if ( window.sessionStorage ) {
+						window.sessionStorage.setItem( 'seoisticQuickWinTokens', JSON.stringify( previewTokens ) );
+					}
+				} catch ( error ) {}
 			}
 			if ( result ) {
 				result.className = 'seoistic-tool-result is-success';
 				result.textContent = data.message || 'Completed.';
 			}
 			if ( reload ) {
+				try {
+					if ( window.sessionStorage ) {
+						window.sessionStorage.removeItem( 'seoisticQuickWinTokens' );
+					}
+				} catch ( error ) {}
 				window.location.reload();
 			}
 		} ).catch( function ( error ) {

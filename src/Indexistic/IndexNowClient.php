@@ -25,9 +25,14 @@ final class IndexNowClient {
 	public function maybe_serve_key_file(): void {
 		$path = trim( (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH ), '/' );
 		$key  = IndexisticSettings::indexnow_key();
-		if ( $path !== $key . '.txt' ) {
+		if ( '' === $key || $path !== $key . '.txt' ) {
 			return;
 		}
+		// IndexNow verification requires an HTTP 200 at the key location — by
+		// the time template_redirect runs on an unknown file, WordPress has
+		// already decided this is a 404, so override the status explicitly.
+		status_header( 200 );
+		nocache_headers();
 		header( 'Content-Type: text/plain; charset=utf-8' );
 		echo esc_html( $key ); // phpcs:ignore WordPress.Security.EscapeOutput
 		exit;

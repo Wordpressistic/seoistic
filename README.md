@@ -4,11 +4,12 @@ A WordPress SEO plugin by [WordPressistic](https://wordpressistic.com): on-page
 analysis and scoring, schema/structured data, XML sitemaps, robots and
 canonical control, redirects with a 404 monitor, image SEO, fast/instant
 search-engine indexing (Google Indexing API + IndexNow, branded
-**Indexistic**), and AI-assisted content optimization using a provider of
-your choice (OpenRouter, Groq, or your own self-hosted Ollama) — with a
-genuinely useful free tier.
+**Indexistic**), and AI-assisted content optimization through the WPistic AI
+service (included with Pro, credit-metered) or your own OpenAI-compatible
+endpoint — with a genuinely useful free tier.
 
 **Marketing site:** [seoistic.wpistic.com](https://seoistic.wpistic.com/) ·
+**Plans & pricing:** [wordpressistic.com/pricing](https://www.wordpressistic.com/pricing/) ·
 **Account & license management:** [app.wpistic.com](https://app.wpistic.com/)
 
 ---
@@ -33,10 +34,10 @@ genuinely useful free tier.
   both linking straight to the editor rather than auto-applying anything.
 - **AI-assisted optimization** — generate/improve SEO titles, meta
   descriptions, focus keywords, schema type, image alt text, internal-link
-  suggestions, and full-page optimization, using your own API key with
-  OpenRouter or Groq, or a self-hosted Ollama server. Every suggestion is
-  previewed before/after and requires an explicit Apply — nothing is written
-  or published silently.
+  suggestions, and full-page optimization through the WPistic AI service
+  (credit-metered with your Pro license), or your own OpenAI-compatible
+  endpoint. Every suggestion is previewed before/after and requires an
+  explicit Apply — nothing is written or published silently.
 - **A command palette** (Ctrl/Cmd+K) to jump to any screen or search your
   content by title/score.
 - **Importers** for Yoast SEO, Rank Math, and AIOSEO metadata.
@@ -47,13 +48,15 @@ Everything above except the items below ships in the free tier: unlimited
 sites, full on-page analysis and scoring, schema, sitemaps, redirects, image
 SEO, WooCommerce SEO, local SEO, and the Yoast/Rank Math/AIOSEO importers.
 
-### Premium (license required)
+### Premium (license required — one Pro plan, every addon)
 
-AI-assisted generation (bring your own OpenRouter/Groq/Ollama key or
-endpoint), Schema Pro (custom schema builder), Core Web Vitals monitoring,
-AI search-visibility / AEO reporting, a keyword rank tracker, a read-only
-Google Search Console dashboard, and the WPistic Business Automator
-integration. See [seoistic.wpistic.com/#pricing](https://seoistic.wpistic.com/#pricing)
+WPistic AI generation (or your own OpenAI-compatible endpoint), Schema Pro
+(custom schema builder), Core Web Vitals monitoring, AI search-visibility /
+AEO reporting, a keyword rank tracker, a read-only Google Search Console
+dashboard, GA4/Search Console/PageSpeed Connections, a Domain & Uptime
+Monitor, and the approval-gated Business Automator. Buy directly from the
+in-plugin Upgrade screen or see
+[wordpressistic.com/pricing](https://www.wordpressistic.com/pricing/).
 for current plans — pricing is kept up to date there, not duplicated here.
 
 ---
@@ -90,9 +93,9 @@ run as-is.
    social-share image.
 3. If you have a license key, open **SEOistic → License** to activate it —
    see "License activation" below.
-4. To use AI-assisted generation, open **SEOistic → Settings → AI**, pick a
-   provider, and add your own API key (not needed for a self-hosted Ollama
-   server).
+4. To use AI-assisted generation, open **SEOistic → Settings → AI** and
+   enable AI features — generation runs on WPistic AI with your Pro
+   license credits, or connect your own OpenAI-compatible endpoint there.
 
 ## Running a site audit
 
@@ -173,8 +176,8 @@ for the full, code-verified list of what's contacted and when.
 | **WPistic licensing** (`wpistic.com`) | License activation/deactivation, and a daily background check while a license is active | Site URL, a generated installation ID, your license key, and the installed plugin version |
 | **Google** (OAuth, Indexing API, Search Console API) | Only if you connect the Indexistic Google integration or the Search Console addon | Your own Google Cloud credentials; the Indexing API receives the URL you publish; Search Console reads (never writes) your existing Analytics/Inspection data |
 | **IndexNow** (`api.indexnow.org`) / **Bing** | On publish, only if the relevant free addon is enabled | The published URL / your sitemap URL |
-| **Groq** / **OpenRouter** | Only when you click an AI action, and only if you selected that provider | The page title, a content excerpt, and site context, as part of the generation prompt |
-| **Your own Ollama server** | Same as above, if you selected Ollama | Same — stays entirely on infrastructure you control |
+| **WPistic AI** (`ai.wpistic.com`) | Only when you click an AI action with AI features enabled | The page title, a trimmed content excerpt, and site context, as part of the generation prompt (authorized by your license; credit-metered). With a custom OpenAI-compatible endpoint configured, generation goes there instead |
+| **Paddle** (`cdn.paddle.com`, `buy.paddle.com`) | Only when you click Buy Now on the in-plugin Upgrade screen | The selected price ID and the prefilled admin email (editable at checkout); the plugin never receives card data |
 | **Your own Business Automator instance** | Only if you connect the addon | An API token you generate on your own instance |
 
 Full trigger-by-trigger detail (with file references) is in
@@ -284,18 +287,12 @@ cd lib/seo-core && composer install && vendor/bin/phpunit
 ### Building a release ZIP
 
 ```bash
-bash scripts/build-release.sh 1.6.5
+bash bin/build-release.sh
 ```
 
-On Windows, use the equivalent PowerShell builder:
-
-```powershell
-pwsh -File scripts/build-release.ps1 -Version 1.6.5
-```
-
-Both builders produce `dist/seoistic-{version}.zip` and a matching SHA-256
-checksum. The package contains only runtime files under the `seoistic/` root;
-tests, development metadata, and prior distribution archives are excluded.
+Produces `build/packages/seoistic-{version}.zip` and a matching
+`.sha256` checksum — see `docs/implementation-plan.md` and the script
+itself for exactly what it does and excludes.
 
 ### More documentation
 

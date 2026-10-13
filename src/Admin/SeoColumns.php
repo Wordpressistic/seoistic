@@ -14,7 +14,9 @@ use WP_Query;
 final class SeoColumns {
 
 	public function register(): void {
-		foreach ( get_post_types( array( 'public' => true ) ) as $post_type ) {
+		$post_types = get_post_types( array( 'public' => true ) );
+		unset( $post_types['attachment'] ); // Media list table has its own workflow.
+		foreach ( $post_types as $post_type ) {
 			add_filter( "manage_{$post_type}_posts_columns", array( $this, 'columns' ) );
 			add_action( "manage_{$post_type}_posts_custom_column", array( $this, 'render' ), 10, 2 );
 			add_filter( "manage_edit-{$post_type}_sortable_columns", array( $this, 'sortable' ) );

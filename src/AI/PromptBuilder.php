@@ -20,12 +20,24 @@ final class PromptBuilder {
 		$context  = KnowledgeBase::get_context( $kb_topic, $page );
 		$format   = self::format_instructions( $type );
 
-		$system = trim( $context . "\n\n## Output format\n" . $format );
+		$system = trim( $context . "\n\n" . self::mode_instruction() . "\n\n## Output format\n" . $format );
 
 		return array(
 			array( 'role' => 'system', 'content' => $system ),
 			array( 'role' => 'user', 'content' => self::ask( $type, $page ) ),
 		);
+	}
+
+	/**
+	 * The Settings → AI "Knowledge Base Mode" dial, threaded into the system
+	 * prompt so the choice actually changes generation behavior.
+	 */
+	private static function mode_instruction(): string {
+		return match ( AiSettings::all()['kb_mode'] ?? 'balanced' ) {
+			'strict'  => '## Guidance mode: strict\nFollow the site/business guidance above exactly. Prefer its terminology verbatim; do not introduce facts, claims, or phrasing that conflict with it.',
+			'creative' => "## Guidance mode: creative\nUse the guidance above as grounding, but vary sentence structure and phrasing. Optimize for distinctiveness over literal compliance — never contradict the facts, though.",
+			default   => '## Guidance mode: balanced\nGround every suggestion in the site/business guidance above and keep its tone; rephrase freely where it improves clarity.',
+		};
 	}
 
 	private static function kb_topic( string $type ): string {

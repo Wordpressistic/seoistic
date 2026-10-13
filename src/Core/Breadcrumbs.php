@@ -29,7 +29,9 @@ final class Breadcrumbs {
 					$trail[] = array( 'label' => $object->labels->name, 'url' => (string) $link );
 				}
 			}
-			$trail[] = array( 'label' => get_the_title( $id ), 'url' => '' );
+			// The metabox's "Breadcrumb title" override wins over the post title.
+			$custom  = method_exists( PostSeo::class, 'breadcrumb_title' ) ? PostSeo::breadcrumb_title( $id ) : '';
+			$trail[] = array( 'label' => '' !== $custom ? $custom : get_the_title( $id ), 'url' => '' );
 		} elseif ( is_post_type_archive() ) {
 			$trail[] = array( 'label' => post_type_archive_title( '', false ), 'url' => '' );
 		} elseif ( is_tax() || is_category() || is_tag() ) {

@@ -43,6 +43,8 @@ final class View {
 					'seoistic-indexistic' => array( 'label' => __( 'Indexistic', 'seoistic' ), 'icon' => 'search' ),
 					'seoistic-performance' => array( 'label' => __( 'Performance', 'seoistic' ), 'icon' => 'performance' ),
 					'seoistic-gsc'        => array( 'label' => __( 'Search Console', 'seoistic' ), 'icon' => 'chart-area' ),
+					'seoistic-connections' => array( 'label' => __( 'Connections', 'seoistic' ), 'icon' => 'admin-links' ),
+					'seoistic-rank-tracker' => array( 'label' => __( 'Rank Tracker', 'seoistic' ), 'icon' => 'chart-line' ),
 					'seoistic-redirects'  => array( 'label' => __( 'Redirects', 'seoistic' ), 'icon' => 'randomize' ),
 				),
 			),
@@ -52,6 +54,12 @@ final class View {
 					'seoistic-ai-tools'            => array( 'label' => __( 'AI Tools', 'seoistic' ), 'icon' => 'superhero', 'badge' => 'ai' ),
 					'seoistic-aeo'                 => array( 'label' => __( 'AI Search', 'seoistic' ), 'icon' => 'superhero-alt', 'badge' => 'business' ),
 					'seoistic-business-automator'  => array( 'label' => __( 'Business Automator', 'seoistic' ), 'icon' => 'controls-repeat' ),
+				),
+			),
+			'schema'   => array(
+				'label' => __( 'Structure', 'seoistic' ),
+				'items' => array(
+					'seoistic-schema-builder' => array( 'label' => __( 'Schema Builder', 'seoistic' ), 'icon' => 'editor-code' ),
 				),
 			),
 			'system'   => array(

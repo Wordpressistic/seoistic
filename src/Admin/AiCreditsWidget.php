@@ -48,6 +48,9 @@ final class AiCreditsWidget {
 					/* translators: %s: plan name. */
 					echo esc_html( sprintf( __( 'Plan: %s', 'seoistic' ), $plan ) );
 					?>
+					<?php if ( 'free' === Plans::normalize_plan( (string) Entitlement::plan() ) ) : ?>
+						· <a href="<?php echo esc_url( admin_url( 'admin.php?page=seoistic-pricing' ) ); ?>"><?php esc_html_e( 'Upgrade for AI credits', 'seoistic' ); ?></a>
+					<?php endif; ?>
 				</p>
 			<?php endif; ?>
 			<div class="seoistic-ai-usage" id="seoistic-ai-usage">

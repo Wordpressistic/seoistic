@@ -179,7 +179,11 @@ final class RankTrackerService {
 				continue;
 			}
 			$id = $this->repository->save_keyword( $keyword, 'en-US', 'desktop', 'gsc' );
-			$this->repository->record_position( $id, $position, '', gmdate( 'Y-m-d H:i:s', strtotime( '-3 days' ) ), true );
+			// Record as today's data point: GSC reports a delayed ~3-day window,
+			// but due_keywords() looks for a position dated today — using the
+			// window date here made every daily import overwrite the same row,
+			// so history never grew past one point per keyword.
+			$this->repository->record_position( $id, $position, '', current_time( 'mysql', true ), true );
 			$imported++;
 		}
 		return array( 'checked' => $imported, 'remaining' => 0, 'mode' => 'gsc' );

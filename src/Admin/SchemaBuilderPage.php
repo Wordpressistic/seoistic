@@ -88,7 +88,7 @@ final class SchemaBuilderPage {
 		<form class="seoistic-schema-editor" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="seoistic_save_schema_block">
 			<input type="hidden" name="id" value="">
-			<input type="hidden" name="rules" id="seoistic-schema-rules-json" value="<?php echo esc_attr( wp_json_encode( array( 'post_types' => array(), 'taxonomies' => array(), 'templates' => array(), 'url_patterns' => array() ) ) ); ?>">
+			<input type="hidden" name="rules_json" id="seoistic-schema-rules-json" value="">
 			<?php wp_nonce_field( 'seoistic_schema_block' ); ?>
 			<div class="seoistic-field">
 				<label class="seoistic-field-label" for="seoistic-schema-title"><?php echo esc_html__( 'Block title', 'seoistic' ); ?></label>
@@ -153,7 +153,7 @@ final class SchemaBuilderPage {
 			</div>
 			<div class="seoistic-field">
 				<label class="seoistic-field-label" for="seoistic-schema-url-patterns"><?php echo esc_html__( 'URL patterns', 'seoistic' ); ?></label>
-				<textarea id="seoistic-schema-url-patterns" rows="2" placeholder="/courses/*"></textarea>
+				<textarea id="seoistic-schema-url-patterns" name="url_patterns" rows="2" placeholder="/courses/*"></textarea>
 				<p class="description"><?php echo esc_html__( 'One pattern per line. Use * as a wildcard.', 'seoistic' ); ?></p>
 			</div>
 		</div>

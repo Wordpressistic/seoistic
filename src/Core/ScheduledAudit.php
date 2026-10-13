@@ -110,9 +110,12 @@ final class ScheduledAudit {
 		$settings  = self::settings();
 		$threshold = $settings['score_threshold'];
 
+		$audit_types = get_post_types( array( 'public' => true ) );
+		unset( $audit_types['attachment'] ); // Media items aren't SEO pages.
+
 		$ids = get_posts(
 			array(
-				'post_type'      => get_post_types( array( 'public' => true ) ),
+				'post_type'      => $audit_types,
 				'post_status'    => 'publish',
 				'fields'         => 'ids',
 				'orderby'        => 'ID',
@@ -148,11 +151,14 @@ final class ScheduledAudit {
 
 		$lines = array();
 		foreach ( $pages as $page ) {
+			// Built directly: get_edit_post_link() returns '' inside WP-Cron,
+			// where no user is logged in and the capability check fails.
+			$edit_url = admin_url( 'post.php?post=' . $page['id'] . '&action=edit' );
 			$lines[] = sprintf(
 				'%1$d/100 — %2$s — %3$s',
 				$page['score'],
 				$page['title'],
-				get_edit_post_link( $page['id'], 'raw' )
+				$edit_url
 			);
 		}
 

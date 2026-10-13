@@ -31,6 +31,7 @@ final class DashboardMetrics {
 
 		global $wpdb;
 		$public_types = get_post_types( array( 'public' => true ) );
+		unset( $public_types['attachment'] ); // Media library items are not SEO pages.
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
 
 		$total_published = (int) $wpdb->get_var(

@@ -6,6 +6,7 @@ namespace Wpistic\Seoistic\AI;
 
 use Wpistic\Seoistic\Core\Crypto;
 use Wpistic\Seoistic\License\LicenseClient;
+use Wpistic\Seoistic\License\Plans;
 use Wpistic\Seoistic\Module\Entitlement;
 
 /**
@@ -64,10 +65,10 @@ final class AiSettings {
 
 	/**
 	 * Whether the current plan may route AI through its own OpenAI-compatible model.
+	 * Pro and above — the Pro tier advertises the custom-model path.
 	 */
 	public static function custom_models_allowed(): bool {
-		$plan = Entitlement::plan();
-		return in_array( $plan, array( 'business', 'agency' ), true );
+		return Plans::rank( Entitlement::plan() ) >= Plans::rank( 'pro' );
 	}
 
 	public static function custom_base_url(): string {

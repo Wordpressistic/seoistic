@@ -85,32 +85,32 @@ final class KnowledgeBase {
 	}
 
 	/**
-	 * Loads custom RAG knowledge from the configured path or WordPress media.
-	 * Supports both local file paths and uploaded files via settings.
+	 * Loads custom RAG knowledge from a file inside the WordPress uploads
+	 * directory (path relative to uploads/, configured in Settings → AI).
+	 * Absolute paths and URLs are intentionally not supported: the setting is
+	 * admin-supplied, and shipping an arbitrary file_get_contents target would
+	 * hand every WP admin an SSRF/local-file primitive into the AI prompt.
 	 */
 	private static function custom_rag_guidance(): string {
-		$path = AiSettings::custom_rag_path();
-		if ( '' === $path ) {
+		$relative = str_replace( '\\', '/', (string) AiSettings::custom_rag_path() );
+		$relative = ltrim( $relative, '/' );
+		if ( '' === $relative || str_contains( $relative, '..' ) || str_contains( $relative, ':' ) ) {
 			return '';
 		}
 
-		$rag_content = '';
-
-		if ( str_starts_with( $path, '/' ) || str_starts_with( $path, 'http' ) ) {
-			$rag_content = @file_get_contents( $path );
-		} else {
-			$upload_dir = wp_get_upload_dir();
-			$full_path  = $upload_dir['basedir'] . '/' . $path;
-			if ( is_file( $full_path ) ) {
-				$rag_content = @file_get_contents( $full_path );
-			}
+		$upload_dir = wp_get_upload_dir();
+		$full_path  = wp_normalize_path( $upload_dir['basedir'] . '/' . $relative );
+		$base       = wp_normalize_path( $upload_dir['basedir'] );
+		if ( ! str_starts_with( $full_path, $base . '/' ) || ! is_file( $full_path ) ) {
+			return '';
 		}
 
+		$rag_content = file_get_contents( $full_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 		if ( false === $rag_content || '' === trim( $rag_content ) ) {
 			return '';
 		}
 
-		return trim( $rag_content );
+		return self::trim_content( $rag_content );
 	}
 
 	/**

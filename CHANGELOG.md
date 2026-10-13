@@ -3,6 +3,91 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.0] - 2026-10-13
+
+### Added
+
+- **Connections addon** (Pro): one Google OAuth connection surfaces GA4,
+  Search Console and PageSpeed data inside SEOISTIC, with PSI quota
+  forwarded from the site's own PageSpeed key when configured.
+- **Domain & Uptime Monitor addon** (Pro): self-contained WP-Cron checks
+  for downtime, response time and SSL expiry with email alerts.
+- **In-plugin checkout**: the Upgrade screen sells plans directly through
+  a Paddle.js overlay. Plan catalogue aligned with the live WPistic
+  commerce catalog — Seoistic Pro $79/year unlocks every premium addon;
+  All-Access ($499/yr) and the All-Access Lifetime ($999 once) are
+  purchasable the same way. Every upgrade CTA in the plugin points at the
+  in-plugin pricing page instead of a marketing anchor.
+- Custom Knowledge File setting (Settings → AI): include an uploads-based
+  knowledge file in every AI prompt; Knowledge Base Mode (strict /
+  balanced / creative) now shapes the system prompt.
+
+### Fixed
+
+- **IndexNow**: the `/{key}.txt` ownership file answered HTTP 404, so every
+  participating engine rejected key verification — now serves 200.
+- **Content Audit Gate**: bypassed entirely by block-editor (REST)
+  publishing; now gates both classic and Gutenberg saves without touching
+  cron/CLI writes.
+- **Business Automator**: the admin page (approval queue, recipe
+  management) was never registered — runs piled up unapprovable; starter
+  recipes shipped enabled and silently spent 5 AI credits per post save.
+  Page registered, recipes default OFF, license-event trigger repaired.
+- **Schema Builder**: display rules were dropped on save (hidden JSON
+  field collided with checkbox arrays) so every saved block injected
+  schema site-wide; rules + URL patterns now persist and apply.
+- **Performance Quick Wins**: the preview call reloaded the page and wiped
+  the apply token, so Apply could never succeed; preview keeps its token
+  (sessionStorage backup), apply/disable still reload.
+- **Rank Tracker**: Search Console imports recorded positions with a
+  back-dated timestamp, so history never grew past one point per keyword;
+  GSC mode now records a daily data point.
+- **AI credits widget**: showed a stale balance after out-of-credit
+  responses and never re-synced; snapshots now update from 402 payloads,
+  every page load re-syncs via GET /ai/credits, and AEO audits refresh the
+  widget instantly.
+- **Connections**: a blank "Save key" submit silently deleted a stored
+  PageSpeed key; OAuth state transients are now hashed (matching GSC).
+- **Custom RAG knowledge**: setting had no UI and was wiped on every
+  settings save; arbitrary absolute/URL file reads removed (SSRF /
+  local-file exposure) — restricted to uploads-relative paths.
+- **Redirects**: broken on subdirectory installs (full request path
+  compared against site-relative sources) and ran an uncached query on
+  every front-end request; install prefix stripped, rules cached with
+  invalidation on save/delete/toggle/import.
+- **uninstall.php**: left the license key, encrypted AI/OAuth secrets, all
+  six custom tables and every `_seoistic_*` post meta behind; cleanup is
+  now complete (content data deletion remains opt-in via
+  `seoistic_delete_data`).
+- Scheduled-audit digest emails embedded empty edit links (cron context);
+  links are now built directly.
+- Dashboard vs Content Inventory disagreed on "missing meta/keyword"
+  counts on upgraded sites (legacy meta keys now honored in both).
+- SEO metabox, score columns, site audit, dashboard metrics and scheduled
+  audits counted media attachments as pages; attachments are excluded
+  consistently.
+- Removed dead AI provider classes that called nonexistent settings
+  methods (fatal risk if invoked) and two leaked client-specific strings
+  (a hardcoded domain and client audit rules) from the product.
+- AEO audit snapshot kept the AI score in the `snapshot_score` history
+  field instead of the deterministic local score.
+- AI Tools result modals were titled "Generating…"; dashboard
+  "Generate llms.txt" quick action now opens the generator directly;
+  AI buttons route to the Upgrade page when AI isn't configured.
+- Bulk AI reports stop after consecutive failures instead of burning one
+  failed request per remaining page; crawler-stats dashboard no longer
+  writes an option on every read.
+
+### Changed
+
+- Header/plugin version constant aligned at 1.7.0 (was 1.7.0 header vs
+  1.6.5 constant — asset cache-busting and license payloads disagreed).
+- `SEOISTIC_PRICING_URL` default now points at the real pricing page
+  (wordpressistic.com/pricing/) instead of a nonexistent anchor.
+- Readme provider claims corrected (WPistic AI + custom OpenAI-compatible
+  endpoint; Groq/OpenRouter/Ollama provider classes are gone), premium
+  feature list and External Services section brought in line with code.
+
 ## [1.6.5] - 2026-10-01
 
 ### Fixed

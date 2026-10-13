@@ -355,6 +355,9 @@
 			}
 		} );
 	}
+	// Shared with the other bundles (AEO audit, AI tools) so any AI spend
+	// updates every visible credits widget without a page reload.
+	window.seoisticRefreshCredits = refreshCreditWidgets;
 
 	function updateCheckLists( checks ) {
 		var fixes = document.getElementById( 'seoistic-priority-fixes' );
@@ -422,8 +425,15 @@
 	};
 
 	function initAiButtons( panel ) {
+		var aiReady = panel.getAttribute( 'data-ai-ready' ) === '1';
 		panel.querySelectorAll( '[data-seoistic-ai-action]' ).forEach( function ( btn ) {
 			btn.addEventListener( 'click', function () {
+				// The metabox marks AI readiness server-side; an unlicensed/off
+				// setup goes straight to the Upgrade page instead of failing.
+				if ( ! aiReady ) {
+					window.location.href = 'admin.php?page=seoistic-pricing';
+					return;
+				}
 				runAiAction( panel, btn, btn.getAttribute( 'data-seoistic-ai-action' ) );
 			} );
 		} );

@@ -96,6 +96,47 @@ final class Tables {
 			KEY checked_at (checked_at)
 		) {$charset};";
 
+		// Domain / uptime monitor (the Uptime addon): one row per monitored
+		// endpoint. `fails` is the consecutive-failure counter used to debounce
+		// a single blip before flipping a monitor to "down".
+		$schemas[] = "CREATE TABLE {$prefix}uptime_monitors (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			label VARCHAR(191) NOT NULL,
+			url VARCHAR(255) NOT NULL,
+			method VARCHAR(10) NOT NULL DEFAULT 'GET',
+			expected_code SMALLINT NOT NULL DEFAULT 0,
+			keyword VARCHAR(191) NULL,
+			interval_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 5,
+			timeout_seconds SMALLINT UNSIGNED NOT NULL DEFAULT 10,
+			enabled TINYINT(1) NOT NULL DEFAULT 1,
+			current_status VARCHAR(10) NOT NULL DEFAULT 'unknown',
+			fails SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+			last_checked DATETIME NULL,
+			last_status_change DATETIME NULL,
+			last_code SMALLINT NULL,
+			last_response_ms INT UNSIGNED NULL,
+			last_error VARCHAR(255) NULL,
+			ssl_expires DATETIME NULL,
+			notify_email VARCHAR(191) NULL,
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			KEY enabled_checked (enabled, last_checked)
+		) {$charset};";
+
+		// Append-only check history for each monitor, used for the uptime-%
+		// window and the incident log. Pruned on a retention schedule.
+		$schemas[] = "CREATE TABLE {$prefix}uptime_checks (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			monitor_id BIGINT UNSIGNED NOT NULL,
+			status VARCHAR(10) NOT NULL,
+			code SMALLINT NULL,
+			response_ms INT UNSIGNED NULL,
+			error VARCHAR(255) NULL,
+			checked_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			KEY monitor_time (monitor_id, checked_at)
+		) {$charset};";
+
 		foreach ( $schemas as $schema ) {
 			dbDelta( $schema );
 		}

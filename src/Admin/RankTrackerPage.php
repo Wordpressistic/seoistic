@@ -151,7 +151,7 @@ final class RankTrackerPage {
 		return match ( $error_code ) {
 			'seoistic_proxy_license_invalid' => __( 'The connected SEOistic license was not accepted by the WPistic service. Revalidate the license, then try again.', 'seoistic' ),
 			'seoistic_proxy_unavailable', 'seoistic_proxy_error' => __( 'The WPistic Search API is unavailable. Select Search Console data (delayed), or configure the Search API provider before running this mode.', 'seoistic' ),
-			'seoistic_rank_tracker_gsc_failed', 'seoistic_gsc_not_connected' => __( 'Connect Google Search Console and select the verified brothertours.com property before running Rank Tracker in Search Console mode.', 'seoistic' ),
+			'seoistic_rank_tracker_gsc_failed', 'seoistic_gsc_not_connected' => __( 'Connect Google Search Console and select the verified property for this site before running Rank Tracker in Search Console mode.', 'seoistic' ),
 			default => __( 'The rank batch could not finish. Check the license or connection and try again.', 'seoistic' ),
 		};
 	}

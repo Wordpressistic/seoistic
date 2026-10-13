@@ -29,17 +29,18 @@ final class ModuleRegistry {
 			\Wpistic\Seoistic\Addon\MigrationModule::class,
 			\Wpistic\Seoistic\Addon\AuditGateModule::class,
 			\Wpistic\Seoistic\Addon\IndexisticModule::class,
-			// Real premium addons (listing entries — AiModule's actual generation is
+			// Premium addons (listing entries — AiModule's actual generation is
 			// wired outside the registry so its settings/tools pages always exist;
 			// GscModule wires its own admin page normally, gated by entitlement).
 			\Wpistic\Seoistic\Addon\AiModule::class,
 			\Wpistic\Seoistic\Addon\GscModule::class,
+			\Wpistic\Seoistic\Addon\ConnectionsModule::class,
 			\Wpistic\Seoistic\Addon\BusinessAutomatorModule::class,
-			// 4 premium addons (coming soon — listed, not yet built).
 			\Wpistic\Seoistic\Addon\AiSearchModule::class,
 			\Wpistic\Seoistic\Addon\RankTrackerModule::class,
 			\Wpistic\Seoistic\Addon\SchemaProModule::class,
 			\Wpistic\Seoistic\Addon\PerformanceModule::class,
+			\Wpistic\Seoistic\Addon\UptimeMonitorModule::class,
 		);
 
 		foreach ( $classes as $class ) {

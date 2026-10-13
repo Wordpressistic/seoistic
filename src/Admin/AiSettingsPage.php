@@ -96,6 +96,16 @@ final class AiSettingsPage {
 						</select>
 					</td>
 				</tr>
+				<tr>
+					<th><?php esc_html_e( 'Custom Knowledge File', 'seoistic' ); ?></th>
+					<td>
+						<label><input type="checkbox" name="custom_rag_enabled" value="1" <?php checked( ! empty( $s['custom_rag_enabled'] ) ); ?>> <?php esc_html_e( 'Include a custom knowledge file in every AI prompt', 'seoistic' ); ?></label>
+						<p>
+							<input type="text" name="custom_rag_path" value="<?php echo esc_attr( (string) $s['custom_rag_path'] ); ?>" class="regular-text" placeholder="seo/business-knowledge.md">
+							<span class="description"><?php esc_html_e( 'Path relative to your uploads folder (upload the file via Media first). Its content is added to the AI context — product facts, tone rules, service list.', 'seoistic' ); ?></span>
+						</p>
+					</td>
+				</tr>
 			</table>
 			</div>
 			<?php submit_button( __( 'Save AI settings', 'seoistic' ) ); ?>
@@ -119,6 +129,8 @@ final class AiSettingsPage {
 				'target_audience'  => sanitize_text_field( wp_unslash( $_POST['target_audience'] ?? '' ) ),
 				'default_language' => sanitize_text_field( wp_unslash( $_POST['default_language'] ?? 'en' ) ),
 				'kb_mode'          => sanitize_key( wp_unslash( $_POST['kb_mode'] ?? 'balanced' ) ),
+				'custom_rag_enabled' => isset( $_POST['custom_rag_enabled'] ),
+				'custom_rag_path'  => $this->sanitize_rag_path( (string) wp_unslash( $_POST['custom_rag_path'] ?? '' ) ),
 				'custom_base_url'  => AiSettings::custom_models_allowed() ? esc_url_raw( wp_unslash( $_POST['custom_base_url'] ?? '' ) ) : '',
 				'custom_model'     => AiSettings::custom_models_allowed() ? sanitize_text_field( wp_unslash( $_POST['custom_model'] ?? '' ) ) : '',
 			)
@@ -138,5 +150,18 @@ final class AiSettingsPage {
 
 		wp_safe_redirect( add_query_arg( 'updated', '1', admin_url( 'admin.php?page=seoistic-settings&tab=ai' ) ) );
 		exit;
+	}
+
+	/**
+	 * The knowledge file is consumed as a path relative to the uploads dir —
+	 * store a normalized, traversal-safe form or nothing.
+	 */
+	private function sanitize_rag_path( string $path ): string {
+		$path = str_replace( '\\', '/', trim( $path ) );
+		$path = ltrim( $path, '/' );
+		if ( '' === $path || str_contains( $path, '..' ) || str_contains( $path, ':' ) ) {
+			return '';
+		}
+		return sanitize_text_field( $path );
 	}
 }

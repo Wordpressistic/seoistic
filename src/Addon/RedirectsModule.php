@@ -50,13 +50,29 @@ final class RedirectsModule extends AbstractModule {
 	}
 
 	private function current_path(): string {
-		return '/' . trim( (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH ), '/' );
+		$path = (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH );
+		// On subdirectory installs (site served from /blog/), stored sources are
+		// site-relative — strip the install prefix before matching.
+		$base = (string) wp_parse_url( (string) home_url(), PHP_URL_PATH );
+		if ( '' !== $base && '/' !== $base && str_starts_with( $path, $base ) ) {
+			$path = substr( $path, strlen( $base ) );
+		}
+		return '/' . trim( $path, '/' );
 	}
 
 	public function maybe_redirect(): void {
 		global $wpdb;
 		$path = $this->current_path();
-		$rows = $wpdb->get_results( "SELECT * FROM {$this->table()} WHERE enabled = 1", ARRAY_A ); // phpcs:ignore WordPress.DB
+		if ( '/' === $path ) {
+			return;
+		}
+		// Enabled rules change rarely but run on every front-end request —
+		// serve them from a cache invalidated whenever a rule is saved.
+		$rows = get_transient( 'seoistic_redirect_rules' );
+		if ( ! is_array( $rows ) ) {
+			$rows = $wpdb->get_results( "SELECT * FROM {$this->table()} WHERE enabled = 1", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			set_transient( 'seoistic_redirect_rules', is_array( $rows ) ? $rows : array(), HOUR_IN_SECONDS );
+		}
 
 		foreach ( (array) $rows as $row ) {
 			$is_regex = ! empty( $row['is_regex'] );
@@ -226,6 +242,7 @@ final class RedirectsModule extends AbstractModule {
 			)
 		);
 		DashboardMetrics::flush();
+		$this->flush_rule_cache();
 		wp_safe_redirect( admin_url( 'admin.php?page=seoistic-redirects' ) );
 		exit;
 	}
@@ -237,6 +254,7 @@ final class RedirectsModule extends AbstractModule {
 		global $wpdb;
 		$wpdb->delete( $this->table(), array( 'id' => absint( $_POST['id'] ?? 0 ) ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		DashboardMetrics::flush();
+		$this->flush_rule_cache();
 		wp_safe_redirect( admin_url( 'admin.php?page=seoistic-redirects' ) );
 		exit;
 	}
@@ -251,6 +269,7 @@ final class RedirectsModule extends AbstractModule {
 			array( 'enabled' => isset( $_POST['enabled'] ) ? 1 : 0 ),
 			array( 'id' => absint( $_POST['id'] ?? 0 ) )
 		);
+		$this->flush_rule_cache();
 		wp_safe_redirect( admin_url( 'admin.php?page=seoistic-redirects' ) );
 		exit;
 	}
@@ -307,8 +326,13 @@ final class RedirectsModule extends AbstractModule {
 		}
 
 		DashboardMetrics::flush();
+		$this->flush_rule_cache();
 		wp_safe_redirect( add_query_arg( 'imported', $count, admin_url( 'admin.php?page=seoistic-redirects' ) ) );
 		exit;
+	}
+
+	private function flush_rule_cache(): void {
+		delete_transient( 'seoistic_redirect_rules' );
 	}
 
 	/**

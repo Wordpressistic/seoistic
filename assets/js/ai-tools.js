@@ -21,7 +21,21 @@
 		initBulkActions();
 		initSitemapPing();
 		initAuditReport();
+		openDeepLinkedTool();
 	} );
+
+	// Dashboard quick action "Generate llms.txt" lands on ?tool=llms — open the
+	// matching generator card's modal trigger immediately instead of dead-linking.
+	function openDeepLinkedTool() {
+		var tool = new URLSearchParams( window.location.search ).get( 'tool' );
+		if ( ! tool ) {
+			return;
+		}
+		var btn = document.querySelector( '[data-seoistic-generate="' + tool + '"]' );
+		if ( btn ) {
+			btn.click();
+		}
+	}
 
 	function restPost( path, body ) {
 		return window.seoisticRestPost( path, body || {} );
@@ -58,6 +72,7 @@
 				}
 				var card = btn.closest( '.seoistic-tool-card' );
 				var original = btn.innerHTML;
+				var buttonLabel = btn.textContent.trim(); // Read before it becomes "Generating…" — used as the result modal title.
 				btn.disabled = true;
 				btn.innerHTML = '<span class="dashicons dashicons-update"></span> ' + 'Generating…';
 				if ( window.auroraSkeletons && card ) {
@@ -67,7 +82,7 @@
 				restPost( config.path, {} )
 					.then( function ( json ) {
 						var data = json.data || {};
-						openModal( btn.textContent.trim(), data[ config.field ] || '', data.reason || '', data.warnings || [] );
+						openModal( buttonLabel, data[ config.field ] || '', data.reason || '', data.warnings || [] );
 						bindApply( config.apply, type );
 					} )
 					.catch( function ( err ) {

@@ -158,6 +158,8 @@ final class AeoAuditService {
 
 	private function merge_report( array $snapshot, array $ai_report ): array {
 		$score = isset( $ai_report['score'] ) && is_numeric( $ai_report['score'] ) ? max( 0, min( 100, (int) $ai_report['score'] ) ) : (int) $snapshot['score'];
+		// Preserve the deterministic local score before the AI score overwrites it.
+		$local_score = (int) $snapshot['score'];
 		$suggestions = array();
 		$raw_suggestions = isset( $ai_report['suggestions'] ) && is_array( $ai_report['suggestions'] ) ? $ai_report['suggestions'] : array();
 		foreach ( $raw_suggestions as $suggestion ) {
@@ -174,7 +176,7 @@ final class AeoAuditService {
 
 		$snapshot['score'] = $score;
 		$snapshot['ai_score'] = $score;
-		$snapshot['snapshot_score'] = (int) $snapshot['score'];
+		$snapshot['snapshot_score'] = $local_score;
 		$snapshot['suggestions'] = array_slice( array_values( array_unique( $suggestions ) ), 0, 12 );
 		$snapshot['ai_review'] = $ai_report;
 		return $snapshot;

@@ -494,16 +494,31 @@ final class RestController {
 		$service = new AiService();
 		$report  = get_transient( $transient_key );
 		$report  = is_array( $report ) ? $report : array();
+		$failures = 0;
 
 		foreach ( $batch['ids'] as $post_id ) {
 			$result = $service->generate( $ai_type, $service->page_context_from_post( $post_id ) );
 			if ( $result['success'] ) {
+				$failures = 0;
 				$report[] = array(
 					'post_id'     => $post_id,
 					'title'       => get_the_title( $post_id ),
 					'edit_url'    => get_edit_post_link( $post_id, 'raw' ),
 					'suggestions' => $result['data']['suggestions'] ?? array(),
 				);
+			} else {
+				// A dead gateway, missing license, or exhausted credits would
+				// otherwise burn one failed API round-trip per page across the
+				// whole batch — stop the run after two consecutive failures.
+				++$failures;
+				if ( $failures >= 2 ) {
+					$response = $this->bulk_response( $offset, 0, $batch['total'], array(
+						'aborted'   => true,
+						'message'   => (string) ( $result['error'] ?? __( 'AI generation failed — batch stopped.', 'seoistic' ) ),
+					) );
+					set_transient( $transient_key, $report, HOUR_IN_SECONDS );
+					return $response;
+				}
 			}
 		}
 		set_transient( $transient_key, $report, HOUR_IN_SECONDS );

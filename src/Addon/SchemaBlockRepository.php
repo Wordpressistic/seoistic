@@ -91,11 +91,32 @@ final class SchemaBlockRepository {
 
 	public function save_from_request( array $raw ): array {
 		$id = absint( $raw['id'] ?? 0 );
+
+		// The builder page serializes the full rules payload (checkbox groups +
+		// URL patterns) into a `rules_json` hidden field. With JavaScript off
+		// that field stays empty, so fall back to the raw checkbox arrays and
+		// the url_patterns textarea — both post real values in that case.
+		$rules_raw   = null;
+		$rules_json  = trim( wp_unslash( (string) ( $raw['rules_json'] ?? '' ) ) );
+		$rules_array = isset( $raw['rules'] ) && is_array( $raw['rules'] ) ? $raw['rules'] : array();
+		if ( '' !== $rules_json ) {
+			$rules_raw = json_decode( $rules_json, true );
+		}
+		if ( ! is_array( $rules_raw ) ) {
+			$patterns     = (string) ( $raw['url_patterns'] ?? '' );
+			$rules_raw    = array(
+				'post_types'   => isset( $rules_array['post_types'] ) && is_array( $rules_array['post_types'] ) ? $rules_array['post_types'] : array(),
+				'taxonomies'   => isset( $rules_array['taxonomies'] ) && is_array( $rules_array['taxonomies'] ) ? $rules_array['taxonomies'] : array(),
+				'templates'    => isset( $rules_array['templates'] ) && is_array( $rules_array['templates'] ) ? $rules_array['templates'] : array(),
+				'url_patterns' => '' === trim( $patterns ) ? array() : ( preg_split( '/\r\n|\r|\n/', $patterns ) ?: array() ),
+			);
+		}
+
 		$data = $this->sanitize(
 			array(
 				'title'   => (string) ( $raw['title'] ?? '' ),
 				'type'    => (string) ( $raw['type'] ?? '' ),
-				'rules'   => json_decode( wp_unslash( (string) ( $raw['rules'] ?? '' ) ), true ),
+				'rules'   => $rules_raw,
 				'mapping' => json_decode( wp_unslash( (string) ( $raw['mapping'] ?? '' ) ), true ),
 			)
 		);
@@ -146,8 +167,17 @@ final class SchemaBlockRepository {
 	 * @return array<string, mixed>
 	 */
 	public function sanitize( array $block ): array {
-		$type = sanitize_key( (string) ( $block['type'] ?? '' ) );
-		$type = isset( self::TYPES[ $type ] ) && 'custom' !== $type ? $type : 'custom';
+		// Types are CamelCase class names (FAQPage, LocalBusiness…). The obvious
+		// sanitize_key() here lowercased them, so every save silently fell
+		// through to 'custom' — match against the whitelist instead.
+		$letters = preg_replace( '/[^A-Za-z]/', '', (string) ( $block['type'] ?? '' ) );
+		$type    = 'custom';
+		foreach ( array_keys( self::TYPES ) as $known ) {
+			if ( 0 === strcasecmp( $known, (string) $letters ) ) {
+				$type = 'custom' !== $known ? $known : 'custom';
+				break;
+			}
+		}
 
 		$allowed_fields = self::TYPES[ $type ];
 		$mapping = array();

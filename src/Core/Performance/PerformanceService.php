@@ -165,13 +165,19 @@ final class PerformanceService {
 	 */
 	public function run( string $url, string $strategy = 'mobile', bool $save = true ) {
 		$strategy = in_array( $strategy, array( 'mobile', 'desktop' ), true ) ? $strategy : 'mobile';
-		$response = $this->proxy->post(
-			'/v1/psi',
-			array(
-				'url'       => esc_url_raw( $url ),
-				'strategy'  => $strategy,
-			)
+		$body     = array(
+			'url'      => esc_url_raw( $url ),
+			'strategy' => $strategy,
 		);
+		// Forward the site's own PageSpeed key (Connections setup) so quota is
+		// consumed against it when the proxy supports it. Ignored when absent.
+		$psi_key = class_exists( \Wpistic\Seoistic\Connections\ConnectionsSettings::class )
+			? \Wpistic\Seoistic\Connections\ConnectionsSettings::psi_api_key()
+			: '';
+		if ( '' !== $psi_key ) {
+			$body['psi_key'] = $psi_key;
+		}
+		$response = $this->proxy->post( '/v1/psi', $body );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}

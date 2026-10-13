@@ -120,7 +120,7 @@ final class WpisticAiClient {
 			'title'            => __( 'Title', 'seoistic' ),
 			'description'      => __( 'Meta description', 'seoistic' ),
 			'keywords'         => __( 'Keywords', 'seoistic' ),
-			'alt'              => __( 'Alt-text batch (per 10 images)', 'seoistic' ),
+			'alt'              => __( 'Alt text (per image)', 'seoistic' ),
 			'optimize_content' => __( 'Content optimization', 'seoistic' ),
 			'full_optimize'    => __( 'Full-page optimization', 'seoistic' ),
 			'schema'           => __( 'Schema generation', 'seoistic' ),
@@ -259,6 +259,15 @@ final class WpisticAiClient {
 
 		if ( 402 === $status ) {
 			$data = is_array( $decoded ) ? $decoded : array();
+			// Keep the widget honest: a 402 is authoritative about the balance
+			// (zero) and the plan, so store it — otherwise the credits widget
+			// keeps showing a stale positive balance after the account runs dry.
+			self::save_server_snapshot(
+				array(
+					'left' => is_numeric( $data['credits_left'] ?? null ) ? (int) $data['credits_left'] : 0,
+					'plan' => sanitize_text_field( (string) ( $data['plan'] ?? Entitlement::plan() ) ),
+				)
+			);
 			return new WP_Error(
 				'seoistic_insufficient_credits',
 				__( 'You are out of AI credits this month. Upgrade your plan to keep generating SEO content.', 'seoistic' ),

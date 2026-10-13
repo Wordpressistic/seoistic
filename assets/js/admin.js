@@ -130,7 +130,39 @@
 		initConfirmForms();
 		initImportCards();
 		initSiteAudit();
+		initCreditsSync();
 	} );
+
+	/* ---------------------------------------------------------------- */
+	/* AI credits widget sync                                            */
+	/* Server snapshot is authoritative but only changes on AI requests;   */
+	/* every page load re-syncs the visible balance so the widget can't    */
+	/* drift (e.g. after an out-of-credits response on another screen).    */
+	/* ---------------------------------------------------------------- */
+	function initCreditsSync() {
+		if ( ! document.querySelector( '.seoistic-ai-credits' ) || typeof window.seoisticRestGet !== 'function' ) {
+			return;
+		}
+		window.seoisticRestGet( '/ai/credits' ).then( function ( json ) {
+			var usage = json && json.data ? json.data : null;
+			var server = usage && usage.server ? usage.server : null;
+			if ( ! server || typeof server.left === 'undefined' || null === server.left ) {
+				return;
+			}
+			var left = parseInt( server.left, 10 );
+			if ( isNaN( left ) ) {
+				return;
+			}
+			document.querySelectorAll( '.seoistic-ai-credits-left strong' ).forEach( function ( el ) {
+				el.textContent = String( left );
+			} );
+			if ( server.plan ) {
+				document.querySelectorAll( '[data-seoistic-ai-plan]' ).forEach( function ( el ) {
+					el.textContent = String( server.plan );
+				} );
+			}
+		} ).catch( function () {} );
+	}
 
 	/* ---------------------------------------------------------------- */
 	/* Animated counters on dashboard/metric cards                       */

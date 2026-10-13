@@ -4,7 +4,7 @@
  * Plugin Name:       SEOistic
  * Plugin URI:        https://seoistic.wpistic.com/
  * Description:       WordPress SEO suite: on-page analysis, schema, sitemaps, redirects, image SEO, WPistic AI-assisted optimization, and fast search-engine indexing — with a genuinely useful free tier.
- * Version:           1.6.5
+ * Version:           1.7.0
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            WordPressistic
@@ -22,8 +22,8 @@ if (! defined('ABSPATH')) {
 	exit;
 }
 
-define('SEOISTIC_VERSION', '1.6.5');
-define('SEOISTIC_DB_VERSION', '1.4.0');
+define('SEOISTIC_VERSION', '1.7.0');
+define('SEOISTIC_DB_VERSION', '1.5.0');
 define('SEOISTIC_FILE', __FILE__);
 define('SEOISTIC_DIR', plugin_dir_path(__FILE__));
 define('SEOISTIC_URL', plugin_dir_url(__FILE__));
@@ -36,7 +36,7 @@ define('SEOISTIC_URL', plugin_dir_url(__FILE__));
  * None of these are user data — they are fixed service endpoints.
  */
 if (! defined('SEOISTIC_PRICING_URL')) {
-	define('SEOISTIC_PRICING_URL', 'https://seoistic.wpistic.com/#pricing');
+	define('SEOISTIC_PRICING_URL', 'https://www.wordpressistic.com/pricing/');
 }
 if (! defined('SEOISTIC_ACCOUNT_URL')) {
 	define('SEOISTIC_ACCOUNT_URL', 'https://app.wpistic.com/');
@@ -46,6 +46,9 @@ if (! defined('SEOISTIC_LICENSE_API_URL')) {
 }
 if (! defined('SEOISTIC_LICENSE_PRODUCT_ID')) {
 	define('SEOISTIC_LICENSE_PRODUCT_ID', 0);
+}
+if (! defined('SEOISTIC_GITHUB_REPO')) {
+	define('SEOISTIC_GITHUB_REPO', 'Wordpressistic/seoistic');
 }
 
 require_once SEOISTIC_DIR . 'src/autoload.php';
@@ -61,15 +64,10 @@ add_action(
 );
 
 /*
- * Simple GitHub Releases update checker.
- * - Checks https://api.github.com/repos/Wordpressistic/seoistic/releases/latest
- * - Adds an update to WordPress update system if a newer release tag is found.
- * - Caches release info in transients to avoid API rate limiting.
- */
-/*
- * Update delivery is managed via the WPistic platform for licensed sites.
- * The legacy GitHub Releases-based updater has been removed for production
- * releases. Public GitHub releases may still be used for source/changelog
- * reference but licensed update discovery and protected downloads are
- * provided by WPistic's API/service.
+ * Update delivery:
+ * - The public (free) build ships no bundled updater — get the latest zip from
+ *   the GitHub Releases page of Wordpressistic/seoistic.
+ * - The paid build wires Core\Updater (self-hosted GitHub Releases checker,
+ *   repo configurable via SEOISTIC_GITHUB_REPO) for in-wp-admin updates.
+ * - Licensed sites can always pull the current build from app.wpistic.com.
  */

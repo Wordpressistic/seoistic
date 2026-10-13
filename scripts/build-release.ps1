@@ -12,8 +12,10 @@ $packageRoot = Join-Path $stage 'seoistic'
 try {
 	New-Item -ItemType Directory -Path $packageRoot, $dist -Force | Out-Null
 	$excluded = @('.git', '.github', 'tests', 'node_modules', 'dist', '.env')
+	# Dot-prefixed entries are never shipped: VCS dirs, tool caches (.mimosa),
+	# editor state — nothing inside a hidden folder belongs in the plugin zip.
 	Get-ChildItem -LiteralPath $root -Force |
-		Where-Object { $excluded -notcontains $_.Name -and $_.Name -notlike '.env.*' } |
+		Where-Object { $excluded -notcontains $_.Name -and $_.Name -notlike '.*' } |
 		ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $packageRoot -Recurse -Force }
 
 	$zip = Join-Path $dist ("seoistic-$Version.zip")

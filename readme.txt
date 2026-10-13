@@ -1,10 +1,10 @@
 === SEOistic ===
-Contributors: [add-your-wordpress-org-username]
+Contributors: wordpressistic
 Tags: seo, schema, sitemap, redirects, indexing
 Requires at least: 6.4
-Tested up to: 6.4
+Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.6.5
+Stable tag: 1.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -16,8 +16,8 @@ SEOistic is a WordPress SEO plugin: on-page analysis and scoring, schema
 (structured data), XML sitemaps, robots and canonical control, redirects
 with a 404 monitor, image SEO, fast/instant search-engine indexing (Google
 Indexing API + IndexNow, branded Indexistic), and AI-assisted content
-optimization using a provider of your choice — OpenRouter, Groq, or your
-own self-hosted Ollama server.
+optimization through the WPistic AI service (included with Pro, credit-
+metered) — or your own OpenAI-compatible endpoint with a custom API key.
 
 = Free features =
 
@@ -39,12 +39,13 @@ own self-hosted Ollama server.
 
 = Premium features (license required) =
 
-AI-assisted generation (bring your own API key/endpoint), a custom schema
-builder, Core Web Vitals monitoring, AI search-visibility / AEO reporting,
-a keyword rank tracker, a read-only Google Search Console dashboard, and
-the WPistic Business Automator integration. Current plans and pricing are
-kept up to date at https://seoistic.wpistic.com/#pricing rather than
-duplicated here.
+AI-assisted generation (WPistic AI credits, or your own OpenAI-compatible
+endpoint), a visual schema builder, Core Web Vitals monitoring, AI
+search-visibility / AEO reporting, a keyword rank tracker, a read-only
+Google Search Console dashboard, GA4/Search Console/PageSpeed Connections,
+a Domain & Uptime Monitor, and the approval-gated Business Automator.
+Current plans and pricing — with working checkout — live on the Upgrade
+screen inside the plugin and at https://www.wordpressistic.com/pricing/.
 
 = AI generation is always explicit and previewed =
 
@@ -111,6 +112,35 @@ screenshot-N.png convention before a .org submission.)
 
 See CHANGELOG.md in the plugin's source repository for the full history.
 Highlights for this release are below.
+
+= 1.7.0 =
+* New addon: Connections — one Google connection for GA4, Search Console
+  and PageSpeed data inside SEOISTIC (Pro).
+* New addon: Domain & Uptime Monitor — WP-Cron downtime/response-time/SSL
+  checks with email alerts (Pro).
+* In-plugin checkout: the Upgrade screen now sells plans directly via a
+  secure Paddle overlay; plans are aligned with the live WPistic catalog
+  (Pro $79/year — every premium addon included).
+* IndexNow: the ownership key file now answers with HTTP 200, fixing key
+  verification for every participating engine.
+* Business Automator: admin page registered (approval queue + recipe
+  management), starter recipes now default OFF — no background AI credit
+  spend until you enable a recipe.
+* Schema Builder: display rules (post types, taxonomies, templates, URL
+  patterns) now save and apply correctly instead of injecting site-wide.
+* Performance Quick Wins: preview/apply flow fixed — apply no longer fails
+  after previewing.
+* Content Audit Gate now also enforces on block-editor (REST) publishing.
+* AI credits: balance re-syncs on page load and after out-of-credit
+  responses; AEO audits update the credits widget instantly.
+* Rank Tracker: Search Console mode now records a daily data point, so
+  trends and sparklines build real history.
+* Custom knowledge file (Settings → AI) is now configurable and restricted
+  to uploads-relative paths; Knowledge Base Mode now shapes prompts.
+* Redirects work on subdirectory installs and serve rules from cache;
+  breadcrumbs honor the metabox "Breadcrumb title"; cron digest emails
+  include working edit links; uninstall removes all data (tables, post
+  meta, encrypted secrets) including premium options.
 
 = 1.6.5 =
 * Keep the HTML sitemap complete, deduplicated, and automatically aligned with published public content.
@@ -230,32 +260,26 @@ Data sent: your sitemap's URL.
 
 Microsoft Privacy Statement: https://www.microsoft.com/en-us/privacy/privacystatement
 
-= Groq (api.groq.com) =
+= WPistic AI (ai.wpistic.com) =
 
-Used only when you trigger an AI action and have selected Groq as your AI
-provider, with your own Groq API key.
+Used only when you trigger an AI action (title, description, keywords,
+schema, alt text, content optimization, AEO audit) and AI features are
+enabled. Requests are authorized with your SEOistic license; credits are
+deducted from your plan's monthly allowance.
 
-Data sent: the relevant page/post title, a content excerpt, and site
-context, as part of the generation prompt. Only ever sent for content you
-explicitly ask SEOistic to generate/improve.
+Data sent: the relevant page/post title, a trimmed content excerpt, and
+your site/business context, as part of the generation prompt. Only ever
+sent for content you explicitly ask SEOistic to generate/improve. If you
+configure your own OpenAI-compatible endpoint (Settings → AI), generation
+goes there instead and nothing is sent to ai.wpistic.com.
 
-Groq Privacy Policy: https://groq.com/privacy-policy
-Groq Terms of Use: https://groq.com/terms-of-use
+= Paddle (cdn.paddle.com, buy.paddle.com) =
 
-= OpenRouter (openrouter.ai) =
-
-Used only when you trigger an AI action and have selected OpenRouter as
-your AI provider, with your own OpenRouter API key. Same data as Groq,
-above.
-
-OpenRouter Privacy Policy: https://openrouter.ai/privacy
-OpenRouter Terms of Service: https://openrouter.ai/terms
-
-= Your own Ollama server =
-
-If you select the self-hosted Ollama provider, requests go to a server URL
-you configure yourself (defaulting to http://127.0.0.1:11434, i.e. your own
-WordPress server). Nothing leaves infrastructure you control.
+Used only when you click a Buy Now button on the in-plugin Upgrade screen:
+the Paddle.js overlay opens a secure checkout. Data sent: the selected
+price ID and, prefilled, the site admin email (editable at checkout).
+Payment and license issuance are handled by Paddle and the WPistic
+billing webhook — the plugin itself never receives card data.
 
 = Your own Business Automator instance =
 

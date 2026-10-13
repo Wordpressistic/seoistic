@@ -8,7 +8,6 @@ use Wpistic\SeoCore\Audit\AuditReport;
 use Wpistic\SeoCore\Audit\Auditor;
 use Wpistic\SeoCore\Audit\Finding;
 use Wpistic\SeoCore\Audit\PageInput;
-use Wpistic\SeoCore\Audit\Severity;
 use Wpistic\Seoistic\Core\PostSeo;
 use Wpistic\Seoistic\Module\AbstractModule;
 
@@ -52,38 +51,44 @@ final class AuditGateModule extends AbstractModule {
 	 * @return array<string, mixed>
 	 */
 	public function block_non_compliant_publish( array $data, array $postarr ): array {
-		if ( is_admin() && ! empty( $data['post_status'] ) && 'publish' === $data['post_status'] && ! empty( $data['post_type'] ) ) {
-			$post_type = (string) $data['post_type'];
-			if ( in_array( $post_type, get_post_types( array( 'public' => true ) ), true ) ) {
-				$post_id   = absint( $postarr['ID'] ?? 0 );
-				$seo_title = $post_id ? PostSeo::title( $post_id ) : '';
-				$seo_desc  = $post_id ? PostSeo::description( $post_id ) : '';
-				$focus_kw  = $post_id ? PostSeo::focus_keyword( $post_id ) : '';
+		if ( ! empty( $data['post_status'] ) && 'publish' === $data['post_status'] && ! empty( $data['post_type'] ) ) {
+			// Gate only user-initiated saves: wp_insert_post_data also fires for
+			// REST (Gutenberg) saves — where is_admin() is false — and for
+			// cron/CLI writes, where no user is logged in and the gate must not
+			// silently hijack the status.
+			if ( ! wp_doing_cron() && ! wp_doing_ajax() && current_user_can( 'edit_post', absint( $postarr['ID'] ?? 0 ) ) ) {
+				$post_type = (string) $data['post_type'];
+				if ( in_array( $post_type, get_post_types( array( 'public' => true ) ), true ) ) {
+					$post_id   = absint( $postarr['ID'] ?? 0 );
+					$seo_title = $post_id ? PostSeo::title( $post_id ) : '';
+					$seo_desc  = $post_id ? PostSeo::description( $post_id ) : '';
+					$focus_kw  = $post_id ? PostSeo::focus_keyword( $post_id ) : '';
 
-				// The SEOISTIC metabox submits its fields on the same request, before
-				// save_post persists them — read those in-flight values when present.
-				if ( isset( $_POST['seoistic_title'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-					$seo_title = sanitize_text_field( wp_unslash( $_POST['seoistic_title'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-				}
-				if ( isset( $_POST['seoistic_description'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-					$seo_desc = sanitize_textarea_field( wp_unslash( $_POST['seoistic_description'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-				}
-				if ( isset( $_POST['seoistic_focus_keyword'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-					$focus_kw = sanitize_text_field( wp_unslash( $_POST['seoistic_focus_keyword'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-				}
+					// The SEOISTIC metabox submits its fields on the same request, before
+					// save_post persists them — read those in-flight values when present.
+					if ( isset( $_POST['seoistic_title'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+						$seo_title = sanitize_text_field( wp_unslash( $_POST['seoistic_title'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+					}
+					if ( isset( $_POST['seoistic_description'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+						$seo_desc = sanitize_textarea_field( wp_unslash( $_POST['seoistic_description'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+					}
+					if ( isset( $_POST['seoistic_focus_keyword'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+						$focus_kw = sanitize_text_field( wp_unslash( $_POST['seoistic_focus_keyword'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+					}
 
-				$report  = $this->audit_values(
-					$post_id,
-					$post_type,
-					(string) ( $data['post_title'] ?? '' ),
-					(string) ( $data['post_content'] ?? '' ),
-					$seo_title,
-					$seo_desc,
-					$focus_kw
-				);
-				if ( ! $report->passed() ) {
-					$data['post_status'] = 'pending';
-					set_transient( 'seoistic_publish_blocked_' . get_current_user_id(), $this->format_failures( $report ), 60 );
+					$report  = $this->audit_values(
+						$post_id,
+						$post_type,
+						(string) ( $data['post_title'] ?? '' ),
+						(string) ( $data['post_content'] ?? '' ),
+						$seo_title,
+						$seo_desc,
+						$focus_kw
+					);
+					if ( ! $report->passed() ) {
+						$data['post_status'] = 'pending';
+						set_transient( 'seoistic_publish_blocked_' . get_current_user_id(), $this->format_failures( $report ), 60 );
+					}
 				}
 			}
 		}
@@ -142,7 +147,7 @@ final class AuditGateModule extends AbstractModule {
 		$banned = $this->banned_words();
 
 		$report = ( new Auditor() )->run( $page, $banned );
-		return new AuditReport( array_merge( $report->findings, $this->brother_tours_findings( $content, $title ) ) );
+		return $report;
 	}
 
 	/**
@@ -178,45 +183,6 @@ final class AuditGateModule extends AbstractModule {
 		);
 		$custom = array_values( array_filter( array_map( 'trim', explode( ',', (string) get_option( 'seoistic_banned_words', '' ) ) ) ) );
 		return array_values( array_unique( array_merge( $defaults, $custom ) ) );
-	}
-
-	/**
-	 * @return list<Finding>
-	 */
-	private function brother_tours_findings( string $content, string $title ): array {
-		$text = wp_strip_all_tags( $title . ' ' . $content );
-
-		$aggregate = false === stripos( $content, 'AggregateRating' );
-		$pricing   = ! preg_match( '/From\s+USD\s+\d+/i', $text ) || (bool) preg_match( '/From\s+USD\s+\d+[^.\\n]*price confirmed on request/i', $text );
-		$capacity  = ! preg_match( '/\b(500|five hundred)\b[^.\\n]*(guest|traveler|people|visitor)/i', $text );
-		$we_do_not = ! preg_match( '/\bWe do not\b/i', $text ) || false !== stripos( $text, 'We do not sell journeys. We share the country we were born in.' );
-
-		return array(
-			new Finding(
-				'no_aggregate_rating',
-				'No AggregateRating before review threshold',
-				$aggregate ? Severity::Pass : Severity::Fail,
-				$aggregate ? '' : 'AggregateRating is blocked until 100+ verified reviews.'
-			),
-			new Finding(
-				'pricing_phrase',
-				'Pricing phrase',
-				$pricing ? Severity::Pass : Severity::Fail,
-				$pricing ? '' : 'Use: From USD X per person · price confirmed on request.'
-			),
-			new Finding(
-				'capacity_scope',
-				'Capacity scope',
-				$capacity ? Severity::Pass : Severity::Fail,
-				$capacity ? '' : 'Use per-tour departure limits, not a company-wide guest count.'
-			),
-			new Finding(
-				'banned_construction_we_do_not',
-				'Banned construction check',
-				$we_do_not ? Severity::Pass : Severity::Fail,
-				$we_do_not ? '' : 'Only the locked Brother Tours phrase may use "We do not".'
-			),
-		);
 	}
 
 	private function format_failures( AuditReport $report ): string {
