@@ -1,0 +1,87 @@
+name: seoistic-dev
+
+# Local end-to-end environment for developing/testing the SEOistic plugin.
+#   wp     → WordPress (plugin source bind-mounted from the repo root)
+#   mock   → stand-in for the WPistic platform: licenseistic API + AI gateway,
+#            proxying chat to the host's Ollama so "our own AI models" run for real.
+#
+# Start:  docker compose -f tests/docker/compose.yaml up -d --build
+# Site:   http://localhost:8890  (admin / admin-password — local only!)
+
+services:
+  db:
+    image: mariadb:10.6
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wp
+      MYSQL_PASSWORD: wp
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    tmpfs:
+      - /var/lib/mysql
+
+  wp:
+    image: wordpress:latest
+    depends_on:
+      db:
+        condition: service_healthy
+      mock:
+        condition: service_started
+    ports:
+      - "8890:80"
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wp
+      WORDPRESS_DB_PASSWORD: wp
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_DEBUG', true);
+        define('WP_DEBUG_LOG', true);
+        define('WP_DEBUG_DISPLAY', false);
+        define('SCRIPT_DEBUG', true);
+        define('SEOISTIC_LICENSE_API_URL', 'http://mock:8088');
+        define('SEOISTIC_LICENSE_API_URL', 'http://mock:8088');
+    volumes:
+      - wp_data:/var/www/html
+      - ../../:/var/www/html/wp-content/plugins/seoistic
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+
+  wpcli:
+    image: wordpress:cli-php8.2
+    depends_on:
+      wp:
+        condition: service_started
+      db:
+        condition: service_healthy
+    user: "33:33"
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wp
+      WORDPRESS_DB_PASSWORD: wp
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wp_data:/var/www/html
+      - ../../:/var/www/html/wp-content/plugins/seoistic
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+      - ./mock:/mock:ro
+
+  mock:
+    image: node:20-alpine
+    working_dir: /mock
+    command: node server.mjs
+    environment:
+      OLLAMA_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: qwen2.5:3b-instruct
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./mock:/mock:ro
+    ports:
+      - "8891:8088"
+
+volumes:
+  wp_data:
