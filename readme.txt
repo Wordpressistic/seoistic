@@ -4,7 +4,7 @@ Tags: seo, schema, sitemap, redirects, indexing
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.7.0
+Stable tag: 1.7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -112,6 +112,10 @@ screenshot-N.png convention before a .org submission.)
 
 See CHANGELOG.md in the plugin's source repository for the full history.
 Highlights for this release are below.
+
+= 1.7.1 =
+* Fixed canonical URL generation for the WordPress posts page and paginated blog archive.
+  Archive pages now emit a self-referencing, pagination-aware canonical URL.
 
 = 1.7.0 =
 * New addon: Connections — one Google connection for GA4, Search Console

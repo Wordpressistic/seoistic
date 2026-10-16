@@ -3,6 +3,14 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.1] - 2026-10-16
+
+### Fixed
+
+- **Posts page canonical**: the WordPress blog archive now emits a
+  self-referencing, pagination-aware canonical URL instead of leaving the
+  archive without a canonical tag.
+
 ## [1.7.0] - 2026-10-13
 
 ### Added
