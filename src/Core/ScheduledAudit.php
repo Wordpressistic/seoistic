@@ -149,17 +149,9 @@ final class ScheduledAudit {
 		$to = self::settings()['notify_email'];
 		$to = '' !== $to ? $to : get_option( 'admin_email' );
 
-		$lines = array();
+		$items = array();
 		foreach ( $pages as $page ) {
-			// Built directly: get_edit_post_link() returns '' inside WP-Cron,
-			// where no user is logged in and the capability check fails.
-			$edit_url = admin_url( 'post.php?post=' . $page['id'] . '&action=edit' );
-			$lines[] = sprintf(
-				'%1$d/100 — %2$s — %3$s',
-				$page['score'],
-				$page['title'],
-				$edit_url
-			);
+			$items[] = '<li style="padding:7px 0;border-bottom:1px solid #e5e7eb"><strong>' . esc_html( (string) $page['score'] ) . '/100</strong> — ' . esc_html( (string) $page['title'] ) . '</li>';
 		}
 
 		$subject = sprintf(
@@ -168,12 +160,18 @@ final class ScheduledAudit {
 			get_bloginfo( 'name' ),
 			count( $pages )
 		);
-		$body = sprintf(
+		$intro = sprintf(
 			/* translators: %d: score threshold. */
-			__( "These pages scored below %d/100 in today's scheduled SEOISTIC audit, having been at or above it last time:\n\n", 'seoistic' ),
+			__( "These pages scored below %d/100 in today's scheduled SEOistic audit, after meeting or exceeding the threshold in the previous check.", 'seoistic' ),
 			$threshold
-		) . implode( "\n", $lines );
+		);
+		$content = '<p style="margin:0 0 10px">' . esc_html( sprintf( __( '%d page(s) need a review.', 'seoistic' ), count( $items ) ) ) . '</p><ul style="margin:0;padding-left:20px">' . implode( '', $items ) . '</ul>';
 
-		wp_mail( $to, $subject, $body );
+		wp_mail(
+			$to,
+			$subject,
+			EmailReportTemplate::render( __( 'Scheduled SEO Audit', 'seoistic' ), __( 'A scheduled SEO audit found pages that need attention.', 'seoistic' ), $intro, $content, __( 'Review SEO Audit', 'seoistic' ), admin_url( 'admin.php?page=seoistic' ) ),
+			EmailReportTemplate::headers()
+		);
 	}
 }

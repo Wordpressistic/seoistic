@@ -406,6 +406,12 @@ if (! function_exists('wp_kses')) {
         return $value;
     }
 }
+if (! function_exists('wp_kses_post')) {
+    function wp_kses_post($value)
+    {
+        return wp_kses($value, 'post');
+    }
+}
 
 if (! function_exists('wp_parse_url')) {
     function wp_parse_url($value, $component = -1)

@@ -3,6 +3,17 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.2] - 2026-10-16
+
+### Improved
+
+- **Branded email reports and alerts**: scheduled SEO audits, Rank Tracker
+  reports, Core Web Vitals alerts, Business Automator notifications, and
+  uptime alerts now share a responsive, email-client-safe SEOistic template
+  with descriptive action buttons. Rank Tracker keeps its configured
+  white-label name, logo, and accent color, and includes a compact keyword
+  summary.
+
 ## [1.7.1] - 2026-10-16
 
 ### Fixed

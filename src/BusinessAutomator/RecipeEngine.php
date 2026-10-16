@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Wpistic\Seoistic\BusinessAutomator;
 
+use Wpistic\Seoistic\Core\EmailReportTemplate;
+
 use Wpistic\Seoistic\AI\AiService;
 use Wpistic\Seoistic\Core\LlmsTxt;
 use Wpistic\Seoistic\Core\PostSeo;
@@ -338,11 +340,19 @@ final class RecipeEngine {
 			return;
 		}
 		$historyUrl = admin_url('admin.php?page=seoistic-business-automator&tab=history');
-		$body = sprintf("%s\n\n%s\n", (string) $run['recipe_name'], $historyUrl);
+		$body = EmailReportTemplate::render(
+			(string) $run['recipe_name'],
+			__('A SEOistic automation recipe has completed.', 'seoistic'),
+			sprintf(__('The automation run “%s” has completed.', 'seoistic'), (string) $run['recipe_name']),
+			'<p>' . esc_html__('Open the automation history to review its steps and outcome.', 'seoistic') . '</p>',
+			__('View Automation History', 'seoistic'),
+			$historyUrl
+		);
 		wp_mail(
 			$this->notification_email(),
 			sprintf('[%s] %s', get_bloginfo('name'), (string) $run['recipe_name']),
-			$body
+			$body,
+			EmailReportTemplate::headers()
 		);
 		$this->step($run, 'notify', 'completed', array('recipient_hash' => self::hash_email($this->notification_email())));
 	}

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Wpistic\Seoistic\Uptime;
 
+use Wpistic\Seoistic\Core\EmailReportTemplate;
+
 /**
  * Domain / uptime monitor engine. Runs entirely inside WordPress (WP-Cron) with no
  * external service required — each due monitor is fetched with wp_remote_request,
@@ -311,25 +313,33 @@ final class UptimeMonitor {
 		if ( 'down' === $status ) {
 			/* translators: 1: monitor label, 2: site name. */
 			$subject = sprintf( __( '[%2$s] SEOISTIC Uptime: %1$s is DOWN', 'seoistic' ), $label, get_bloginfo( 'name' ) );
-			$body    = sprintf(
-				/* translators: 1: URL, 2: reason/error, 3: HTTP code. */
-				__( "%1\$s appears to be down.\n\nReason: %2\$s\nHTTP status: %3\$d\n\nSEOISTIC will email you again when it recovers.", 'seoistic' ),
-				$url,
-				'' !== $outcome['error'] ? $outcome['error'] : __( 'Unknown', 'seoistic' ),
-				(int) $outcome['code']
+			$intro   = sprintf(
+				/* translators: %s: monitor label. */
+				__( "%1\$s appears to be down. SEOistic will email you again when it recovers.", 'seoistic' ),
+				$label
 			);
+			$content = '<p><strong>' . esc_html__( 'Reason', 'seoistic' ) . ':</strong> ' . esc_html( '' !== $outcome['error'] ? $outcome['error'] : __( 'Unknown', 'seoistic' ) ) . '</p><p><strong>' . esc_html__( 'HTTP status', 'seoistic' ) . ':</strong> ' . esc_html( (string) (int) $outcome['code'] ) . '</p>';
+			$button_label = __( 'Visit Monitored Website', 'seoistic' );
 		} else {
 			/* translators: 1: monitor label, 2: site name. */
 			$subject = sprintf( __( '[%2$s] SEOISTIC Uptime: %1$s is back UP', 'seoistic' ), $label, get_bloginfo( 'name' ) );
-			$body    = sprintf(
-				/* translators: 1: URL, 2: response time in ms. */
-				__( "%1\$s is responding normally again.\n\nResponse time: %2\$d ms", 'seoistic' ),
-				$url,
-				(int) $outcome['response_ms']
+			$intro   = sprintf(
+				/* translators: 1: monitor label. */
+				__( '%1$s is responding normally again.', 'seoistic' ),
+				$label
 			);
+			$content = '<p><strong>' . esc_html__( 'Response time', 'seoistic' ) . ':</strong> ' . esc_html( (string) (int) $outcome['response_ms'] ) . ' ms</p>';
+			$button_label = __( 'Visit Monitored Website', 'seoistic' );
 		}
-
-		wp_mail( $to, $subject, $body );
+		$body = EmailReportTemplate::render(
+			$label,
+			$intro,
+			$intro,
+			$content,
+			$button_label,
+			$url
+		);
+		wp_mail( $to, $subject, $body, EmailReportTemplate::headers() );
 	}
 
 	private function truncate( string $value, int $length = 255 ): string {
