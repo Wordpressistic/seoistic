@@ -156,6 +156,10 @@ final class Meta {
 		if ( is_front_page() ) {
 			return home_url( '/' );
 		}
+		if ( is_home() ) {
+			$paged = (int) get_query_var( 'paged' );
+			return (string) get_pagenum_link( max( 1, $paged ) );
+		}
 		if ( is_post_type_archive() ) {
 			return (string) get_post_type_archive_link( get_post_type() );
 		}
