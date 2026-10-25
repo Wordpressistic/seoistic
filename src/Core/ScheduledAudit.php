@@ -149,9 +149,16 @@ final class ScheduledAudit {
 		$to = self::settings()['notify_email'];
 		$to = '' !== $to ? $to : get_option( 'admin_email' );
 
-		$items = array();
+		$scores = array_map( static fn( array $page ): int => (int) $page['score'], $pages );
+		$average = array() !== $scores ? (int) round( array_sum( $scores ) / count( $scores ) ) : 0;
+
+		$rows = array();
 		foreach ( $pages as $page ) {
-			$items[] = '<li style="padding:7px 0;border-bottom:1px solid #e5e7eb"><strong>' . esc_html( (string) $page['score'] ) . '/100</strong> — ' . esc_html( (string) $page['title'] ) . '</li>';
+			$rows[] = array(
+				EmailReportTemplate::score_chip( (int) $page['score'] ),
+				esc_html( (string) $page['title'] ),
+				'<a href="' . esc_url( (string) get_edit_post_link( (int) $page['id'], 'raw' ) ) . '" style="color:#0EA5E9;text-decoration:none;font-weight:700">' . esc_html__( 'Fix now', 'seoistic' ) . '</a>',
+			);
 		}
 
 		$subject = sprintf(
@@ -165,12 +172,44 @@ final class ScheduledAudit {
 			__( "These pages scored below %d/100 in today's scheduled SEOistic audit, after meeting or exceeding the threshold in the previous check.", 'seoistic' ),
 			$threshold
 		);
-		$content = '<p style="margin:0 0 10px">' . esc_html( sprintf( __( '%d page(s) need a review.', 'seoistic' ), count( $items ) ) ) . '</p><ul style="margin:0;padding-left:20px">' . implode( '', $items ) . '</ul>';
+
+		$content = EmailReportTemplate::stat_cards( array(
+			array(
+				'label' => __( 'Pages to review', 'seoistic' ),
+				'value' => (string) count( $pages ),
+				'tone'  => 'warn',
+				'sub'   => sprintf( /* translators: %d: score threshold. */ __( 'threshold %d/100', 'seoistic' ), $threshold ),
+			),
+			array(
+				'label' => __( 'Average score', 'seoistic' ),
+				'value' => (string) $average . '/100',
+				'tone'  => $average >= 50 ? 'warn' : 'bad',
+			),
+			array(
+				'label' => __( 'Worst score', 'seoistic' ),
+				'value' => (string) min( $scores ) . '/100',
+				'tone'  => 'bad',
+			),
+		) );
+		$content .= EmailReportTemplate::section( __( 'Pages that dropped', 'seoistic' ) );
+		$content .= EmailReportTemplate::data_table(
+			array( __( 'Score', 'seoistic' ), __( 'Page', 'seoistic' ), __( 'Action', 'seoistic' ) ),
+			$rows,
+			15
+		);
 
 		wp_mail(
 			$to,
 			$subject,
-			EmailReportTemplate::render( __( 'Scheduled SEO Audit', 'seoistic' ), __( 'A scheduled SEO audit found pages that need attention.', 'seoistic' ), $intro, $content, __( 'Review SEO Audit', 'seoistic' ), admin_url( 'admin.php?page=seoistic' ) ),
+			EmailReportTemplate::render(
+				__( 'Scheduled SEO Audit', 'seoistic' ),
+				__( 'A scheduled SEO audit found pages that need attention.', 'seoistic' ),
+				$intro,
+				$content,
+				__( 'Review SEO Audit', 'seoistic' ),
+				admin_url( 'admin.php?page=seoistic' ),
+				array( 'tone' => 'warn' )
+			),
 			EmailReportTemplate::headers()
 		);
 	}

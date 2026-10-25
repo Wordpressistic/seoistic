@@ -357,10 +357,19 @@ final class PerformanceService {
 		if ( array() === $exceeded ) {
 			return false;
 		}
-		$items = array();
+
+		// Metric cards: one tile per exceeded vital, red-banded against the threshold.
+		$cards = array();
 		foreach ( $exceeded as $item ) {
-			$items[] = '<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb">' . esc_html( self::metric_label( $item['metric'] ) ) . '</td><td style="padding:8px;border-bottom:1px solid #e5e7eb"><strong>' . esc_html( self::format_metric( $item['metric'], $item['value'] ) ) . '</strong></td><td style="padding:8px;border-bottom:1px solid #e5e7eb">' . esc_html( self::format_metric( $item['metric'], $item['threshold'] ) ) . '</td></tr>';
+			$cards[] = array(
+				'label' => self::metric_label( $item['metric'] ),
+				'value' => self::format_metric( $item['metric'], $item['value'] ),
+				'tone'  => 'bad',
+				/* translators: %s: configured threshold for the metric. */
+				'sub'   => sprintf( __( 'limit %s', 'seoistic' ), self::format_metric( $item['metric'], $item['threshold'] ) ),
+			);
 		}
+
 		$to = '' !== $settings['notify_email'] ? $settings['notify_email'] : (string) get_option( 'admin_email' );
 		return (bool) wp_mail(
 			$to,
@@ -373,9 +382,12 @@ final class PerformanceService {
 				__( 'Core Web Vitals Alert', 'seoistic' ),
 				__( 'One or more Core Web Vitals measurements exceeded configured limits.', 'seoistic' ),
 				__( 'The latest performance check exceeded your configured thresholds.', 'seoistic' ),
-				'<p><strong>' . esc_html__( 'Page checked', 'seoistic' ) . ':</strong> <a href="' . esc_url( (string) $entry['url'] ) . '" style="color:#0369a1">' . esc_html__( 'Open the tested page', 'seoistic' ) . '</a></p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse"><thead><tr><th style="padding:8px;text-align:left">' . esc_html__( 'Metric', 'seoistic' ) . '</th><th style="padding:8px;text-align:left">' . esc_html__( 'Measured', 'seoistic' ) . '</th><th style="padding:8px;text-align:left">' . esc_html__( 'Threshold', 'seoistic' ) . '</th></tr></thead><tbody>' . implode( '', $items ) . '</tbody></table>',
+				EmailReportTemplate::stat_cards( $cards ) .
+				EmailReportTemplate::section( __( 'Page checked', 'seoistic' ) ) .
+				'<p style="margin:0"><a href="' . esc_url( (string) $entry['url'] ) . '" style="color:#0EA5E9;text-decoration:none;font-weight:700">' . esc_html( (string) $entry['url'] ) . '</a></p>',
 				__( 'Open Performance Report', 'seoistic' ),
-				admin_url( 'admin.php?page=seoistic-performance' )
+				admin_url( 'admin.php?page=seoistic-performance' ),
+				array( 'tone' => 'bad' )
 			),
 			EmailReportTemplate::headers()
 		);

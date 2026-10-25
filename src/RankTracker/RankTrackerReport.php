@@ -35,12 +35,16 @@ final class RankTrackerReport {
 		}
 		$logo_html = '' !== $logo ? '<img src="' . esc_url( $logo ) . '" alt="' . esc_attr( $brand ) . '">' : '';
 		$button = $admin ? '<button type="button" class="seoistic-report-print" data-rank-report-print>' . esc_html__( 'Print to PDF', 'seoistic' ) . '</button>' : '';
+		/* translators: %s: brand name. */
+		$title = sprintf( __( '%s — SEO Rank Report', 'seoistic' ), $brand );
+		/* translators: 1: report date, 2: site home URL. */
+		$meta = sprintf( __( 'Generated on %1$s · Site: %2$s', 'seoistic' ), $generated, home_url( '/' ) );
 
-		return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . esc_attr( sprintf( __( '%s — SEO Rank Report', 'seoistic' ), $brand ) ) . '</title><style>' . $this->css( $color, $admin ) . '</style></head><body><main><header><div>' . $logo_html . '<h1>' . esc_html( $brand ) . '</h1><p>' . esc_html__( 'SEO Rank Report', 'seoistic' ) . '</p></div>' . $button . '</header><p class="meta">' . esc_html( sprintf( __( 'Generated on %1$s · Site: %2$s', 'seoistic' ), $generated, home_url( '/' ) ) ) . '</p><table><thead><tr><th>' . esc_html__( 'Keyword', 'seoistic' ) . '</th><th>' . esc_html__( 'Locale', 'seoistic' ) . '</th><th>' . esc_html__( 'Device', 'seoistic' ) . '</th><th>' . esc_html__( 'Position', 'seoistic' ) . '</th><th>' . esc_html__( 'Movement', 'seoistic' ) . '</th><th>' . esc_html__( 'Data source', 'seoistic' ) . '</th></tr></thead><tbody>' . $rows . '</tbody></table>' . $this->footnote() . '</main></body></html>';
+		return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . esc_attr( $title ) . '</title><style>' . $this->css( $color, $admin ) . '</style></head><body><main><header><div>' . $logo_html . '<h1>' . esc_html( $brand ) . '</h1><p>' . esc_html__( 'SEO Rank Report', 'seoistic' ) . '</p></div>' . $button . '</header><p class="meta">' . esc_html( $meta ) . '</p><table><thead><tr><th>' . esc_html__( 'Keyword', 'seoistic' ) . '</th><th>' . esc_html__( 'Locale', 'seoistic' ) . '</th><th>' . esc_html__( 'Device', 'seoistic' ) . '</th><th>' . esc_html__( 'Position', 'seoistic' ) . '</th><th>' . esc_html__( 'Movement', 'seoistic' ) . '</th><th>' . esc_html__( 'Data source', 'seoistic' ) . '</th></tr></thead><tbody>' . $rows . '</tbody></table>' . $this->footnote() . '</main></body></html>';
 	}
 
 	private function email_html( string $brand, string $generated ): string {
-		$rows = '';
+		$table_rows = array();
 		$ranked = 0;
 		$improved = 0;
 		$declined = 0;
@@ -48,45 +52,60 @@ final class RankTrackerReport {
 		foreach ( $this->rows as $row ) {
 			$keyword = (array) $row['keyword'];
 			$current = null === $row['current'] ? '—' : number_format_i18n( (float) $row['current'], 1 );
-			$change  = wp_strip_all_tags( $this->change_html( $row['change'] ?? null ) );
+			$change  = (float) ( $row['change'] ?? 0 );
 			if ( is_numeric( $row['current'] ) ) {
 				++$ranked;
 				$position_total += (float) $row['current'];
 			}
-			if ( is_numeric( $row['change'] ?? null ) && (float) $row['change'] > 0 ) {
+			$movement_tone = 'neutral';
+			$movement_text = '—';
+			if ( is_numeric( $row['change'] ?? null ) && $change > 0 ) {
 				++$improved;
-			} elseif ( is_numeric( $row['change'] ?? null ) && (float) $row['change'] < 0 ) {
+				$movement_tone = 'ok';
+				$movement_text = '▲ ' . number_format_i18n( $change, 1 );
+			} elseif ( is_numeric( $row['change'] ?? null ) && $change < 0 ) {
 				++$declined;
+				$movement_tone = 'bad';
+				$movement_text = '▼ ' . number_format_i18n( abs( $change ), 1 );
 			}
-			$rows   .= '<tr><td style="padding:9px 7px;border-bottom:1px solid #e5e7eb">' . esc_html( (string) $keyword['keyword'] ) . '</td><td style="padding:9px 7px;border-bottom:1px solid #e5e7eb">' . esc_html( (string) $keyword['locale'] ) . '</td><td style="padding:9px 7px;border-bottom:1px solid #e5e7eb">' . esc_html( (string) $keyword['device'] ) . '</td><td style="padding:9px 7px;border-bottom:1px solid #e5e7eb"><strong>' . esc_html( (string) $current ) . '</strong></td><td style="padding:9px 7px;border-bottom:1px solid #e5e7eb">' . esc_html( $change ) . '</td><td style="padding:9px 7px;border-bottom:1px solid #e5e7eb">' . esc_html( (string) ( $row['source_label'] ?? '' ) ) . '</td></tr>';
+			$movement_color = 'ok' === $movement_tone ? '#059669' : ( 'bad' === $movement_tone ? '#B91C1C' : '#64748B' );
+			$table_rows[] = array(
+				esc_html( (string) $keyword['keyword'] ),
+				esc_html( (string) $keyword['locale'] ),
+				esc_html( (string) $keyword['device'] ),
+				'<strong style="color:#0F172A">' . esc_html( (string) $current ) . '</strong>',
+				'<strong style="color:' . $movement_color . '">' . $movement_text . '</strong>',
+				esc_html( (string) ( $row['source_label'] ?? '' ) ),
+			);
 		}
-		if ( '' === $rows ) {
-			$rows = '<tr><td colspan="6" style="padding:12px 7px">' . esc_html__( 'No keywords are being tracked yet.', 'seoistic' ) . '</td></tr>';
-		}
-		$table = '<div style="overflow-x:auto"><table role="table" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:12px"><thead><tr>';
-		foreach ( array( __( 'Keyword', 'seoistic' ), __( 'Locale', 'seoistic' ), __( 'Device', 'seoistic' ), __( 'Position', 'seoistic' ), __( 'Movement', 'seoistic' ), __( 'Data source', 'seoistic' ) ) as $heading ) {
-			$table .= '<th scope="col" style="padding:8px 7px;border-bottom:2px solid #cbd5e1;text-align:left;color:#475569;font-size:10px">' . esc_html( $heading ) . '</th>';
-		}
-		$table .= '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
+
+		$average_position = $ranked > 0 ? number_format_i18n( $position_total / $ranked, 1 ) : '—';
+		$table = EmailReportTemplate::data_table(
+			array( __( 'Keyword', 'seoistic' ), __( 'Locale', 'seoistic' ), __( 'Device', 'seoistic' ), __( 'Position', 'seoistic' ), __( 'Movement', 'seoistic' ), __( 'Data source', 'seoistic' ) ),
+			$table_rows,
+			25
+		);
 		if ( '' !== $this->footnote() ) {
 			$table .= '<p style="color:#64748b;font-size:12px">' . wp_strip_all_tags( $this->footnote() ) . '</p>';
 		}
-		$average_position = $ranked > 0 ? number_format_i18n( $position_total / $ranked, 1 ) : '—';
-		$stats = '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 18px;border-collapse:separate;border-spacing:6px"><tr>';
-		foreach ( array(
-			__( 'Tracked keywords', 'seoistic' ) => (string) count( $this->rows ),
-			__( 'With ranking data', 'seoistic' ) => (string) $ranked,
-			__( 'Average position', 'seoistic' ) => (string) $average_position,
-			__( 'Improved', 'seoistic' ) => (string) $improved,
-			__( 'Declined', 'seoistic' ) => (string) $declined,
-		) as $label => $value ) {
-			$stats .= '<td style="width:20%;padding:10px 8px;border:1px solid #e2e7ef;border-radius:5px;vertical-align:top"><div style="font-size:10px;color:#64748b">' . esc_html( $label ) . '</div><div style="padding-top:4px;font-size:17px;font-weight:700;color:#0F2044">' . esc_html( $value ) . '</div></td>';
-		}
-		$stats .= '</tr></table>';
+
+		$stats = EmailReportTemplate::stat_cards( array(
+			array( 'label' => __( 'Tracked', 'seoistic' ), 'value' => (string) count( $this->rows ), 'tone' => 'info' ),
+			array( 'label' => __( 'Ranked', 'seoistic' ), 'value' => (string) $ranked, 'tone' => 'neutral' ),
+			array( 'label' => __( 'Avg. position', 'seoistic' ), 'value' => (string) $average_position, 'tone' => 'neutral' ),
+			array( 'label' => __( 'Improved', 'seoistic' ), 'value' => (string) $improved, 'tone' => 'ok' ),
+		) );
+
+		/* translators: %s: brand name. */
+		$email_title = sprintf( __( '%s — SEO Rank Report', 'seoistic' ), $brand );
+		/* translators: %s: report date. */
+		$preheader = sprintf( __( 'Your SEO rank report for %s.', 'seoistic' ), $generated );
+		/* translators: 1: report date, 2: site home URL. */
+		$email_intro = sprintf( __( 'Generated on %1$s for %2$s', 'seoistic' ), $generated, home_url( '/' ) );
 		return EmailReportTemplate::render(
-			sprintf( __( '%s — SEO Rank Report', 'seoistic' ), $brand ),
-			sprintf( __( 'Your SEO rank report for %s.', 'seoistic' ), $generated ),
-			sprintf( __( 'Generated on %1$s for %2$s', 'seoistic' ), $generated, home_url( '/' ) ),
+			$email_title,
+			$preheader,
+			$email_intro,
 			$stats . $table,
 			__( 'Open Rank Tracker', 'seoistic' ),
 			admin_url( 'admin.php?page=seoistic-rank-tracker' ),

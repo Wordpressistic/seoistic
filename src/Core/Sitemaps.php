@@ -68,6 +68,7 @@ final class Sitemaps {
 		if ( ! empty( $args['meta_query'] ) && is_array( $args['meta_query'] ) ) {
 			$indexable_meta[] = $args['meta_query'];
 		}
+		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- meta_query is the only mechanism to exclude noindex content from sitemap queries; the same pattern is used by Yoast SEO and Rank Math.
 		$args['meta_query'] = $indexable_meta;
 
 		$excluded_ids = self::settings()['excluded_ids'];

@@ -63,7 +63,7 @@ jobs:
           tools: wp-cli
           coverage: none
       - name: Build runtime-only distribution
-        run: git archive --format=zip --prefix=seoistic/ -o /tmp/seoistic-build.zip HEAD assets lib src knowledge seoistic.php uninstall.php LICENSE readme.txt CHANGELOG.md README.md composer.json
+        run: git archive --format=zip --prefix=seoistic/ -o /tmp/seoistic-build.zip HEAD assets lib src knowledge languages seoistic.php uninstall.php LICENSE readme.txt CHANGELOG.md README.md composer.json
       - name: Install isolated WordPress
         run: |
           mkdir -p /tmp/seoistic-wp

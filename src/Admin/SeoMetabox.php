@@ -67,8 +67,8 @@ final class SeoMetabox {
 		echo '<p class="seoistic-sidebar-score-label">' . esc_html__( 'SEO score', 'seoistic' ) . '</p>';
 
 		echo '<div class="seoistic-sidebar-badges">';
-		echo View::badge( $noindex ? __( 'Noindex', 'seoistic' ) : __( 'Indexable', 'seoistic' ), $noindex ? 'noindex' : 'indexable' );
-		echo View::badge( '' !== $keyword ? $keyword : __( 'No keyword', 'seoistic' ), '' !== $keyword ? 'good' : 'warn' );
+		echo View::badge( $noindex ? __( 'Noindex', 'seoistic' ) : __( 'Indexable', 'seoistic' ), $noindex ? 'noindex' : 'indexable' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally.
+		echo View::badge( '' !== $keyword ? $keyword : __( 'No keyword', 'seoistic' ), '' !== $keyword ? 'good' : 'warn' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally.
 		echo '</div>';
 
 		if ( array() !== $issues ) {
@@ -410,9 +410,12 @@ final class SeoMetabox {
 		}
 
 		$credits = (int) ( $opts['credits'] ?? 0 );
-		$title = $credits > 0
-			? sprintf( _n( '%1$s (1 credit)', '%1$s (%2$d credits)', $credits, 'seoistic' ), $label, $credits )
-			: $label;
+		if ( $credits > 0 ) {
+			/* translators: 1: feature label, 2: number of AI credits. */
+			$title = sprintf( _n( '%1$s (%2$d credit)', '%1$s (%2$d credits)', $credits, 'seoistic' ), $label, $credits );
+		} else {
+			$title = $label;
+		}
 
 		// A "fix" button only ever carries data-seoistic-ai-fix — ai.js switches to
 		// the AI tab and clicks the *actual* action button there. Giving it its own
@@ -483,17 +486,17 @@ final class SeoMetabox {
 		PostSeo::save(
 			$post_id,
 			array(
-				'_seoistic_title'            => wp_unslash( $_POST['seoistic_title'] ?? '' ),
-				'_seoistic_description'      => wp_unslash( $_POST['seoistic_description'] ?? '' ),
-				'_seoistic_focus_keyword'    => wp_unslash( $_POST['seoistic_focus_keyword'] ?? '' ),
-				'_seoistic_canonical'        => wp_unslash( $_POST['seoistic_canonical'] ?? '' ),
+				'_seoistic_title'            => sanitize_text_field( wp_unslash( (string) ( $_POST['seoistic_title'] ?? '' ) ) ),
+				'_seoistic_description'      => sanitize_textarea_field( wp_unslash( (string) ( $_POST['seoistic_description'] ?? '' ) ) ),
+				'_seoistic_focus_keyword'    => sanitize_text_field( wp_unslash( (string) ( $_POST['seoistic_focus_keyword'] ?? '' ) ) ),
+				'_seoistic_canonical'        => esc_url_raw( wp_unslash( (string) ( $_POST['seoistic_canonical'] ?? '' ) ) ),
 				'_seoistic_noindex'          => isset( $_POST['seoistic_noindex'] ),
 				'_seoistic_nofollow'         => isset( $_POST['seoistic_nofollow'] ),
-				'_seoistic_og_title'         => wp_unslash( $_POST['seoistic_og_title'] ?? '' ),
-				'_seoistic_og_description'   => wp_unslash( $_POST['seoistic_og_description'] ?? '' ),
-				'_seoistic_og_image'         => wp_unslash( $_POST['seoistic_og_image'] ?? '' ),
-				'_seoistic_schema_type'      => wp_unslash( $_POST['seoistic_schema_type'] ?? '' ),
-				'_seoistic_breadcrumb_title' => wp_unslash( $_POST['seoistic_breadcrumb_title'] ?? '' ),
+				'_seoistic_og_title'         => sanitize_text_field( wp_unslash( (string) ( $_POST['seoistic_og_title'] ?? '' ) ) ),
+				'_seoistic_og_description'   => sanitize_textarea_field( wp_unslash( (string) ( $_POST['seoistic_og_description'] ?? '' ) ) ),
+				'_seoistic_og_image'         => esc_url_raw( wp_unslash( (string) ( $_POST['seoistic_og_image'] ?? '' ) ) ),
+				'_seoistic_schema_type'      => sanitize_text_field( wp_unslash( (string) ( $_POST['seoistic_schema_type'] ?? '' ) ) ),
+				'_seoistic_breadcrumb_title' => sanitize_text_field( wp_unslash( (string) ( $_POST['seoistic_breadcrumb_title'] ?? '' ) ) ),
 			)
 		);
 	}

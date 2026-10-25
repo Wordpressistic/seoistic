@@ -2,9 +2,9 @@
 Contributors: wordpressistic
 Tags: seo, schema, sitemap, redirects, indexing
 Requires at least: 6.4
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.7.2
+Stable tag: 1.7.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -112,6 +112,23 @@ screenshot-N.png convention before a .org submission.)
 
 See CHANGELOG.md in the plugin's source repository for the full history.
 Highlights for this release are below.
+
+= 1.7.3 =
+* WordPress Plugin Check: resolved all 67 errors and 191 warnings — output
+  escaping, input sanitization, nonce verification, SQL preparation (%i
+  placeholders everywhere, fixed four latent wrong-placeholder-count queries),
+  translators comments, plugin packaging and readme "Tested up to" 7.1.
+* Security fix: Rank Tracker form nonces were echoed outside their <form> and
+  could fail verification; nonces now render inside their forms.
+* Performance: Rank Tracker, Indexing Log, Schema Blocks, Uptime, Content
+  Decay and Link Graph reads now use the object cache with write
+  invalidation.
+* New "Aurora" email design for every automated email — animated branded
+  header, stat cards, score chips, data tables and gradient CTAs, with real
+  per-site insights (pages to review, average/worst scores, per-metric CWV
+  cards with thresholds, audited-page tables, uptime status).
+* Build scripts now ship a runtime-only ZIP (build tooling can no longer leak
+  into the distributed package).
 
 = 1.7.1 =
 * Fixed canonical URL generation for the WordPress posts page and paginated blog archive.

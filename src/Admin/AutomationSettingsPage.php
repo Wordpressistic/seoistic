@@ -72,7 +72,7 @@ final class AutomationSettingsPage {
 		ScheduledAudit::save(
 			isset( $_POST['enabled'] ),
 			sanitize_key( wp_unslash( $_POST['frequency'] ?? 'weekly' ) ),
-			(int) ( $_POST['score_threshold'] ?? 70 ),
+			(int) sanitize_text_field( wp_unslash( (string) ( $_POST['score_threshold'] ?? '70' ) ) ),
 			sanitize_email( wp_unslash( $_POST['notify_email'] ?? '' ) )
 		);
 

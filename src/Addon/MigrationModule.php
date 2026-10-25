@@ -126,9 +126,9 @@ final class MigrationModule extends AbstractModule {
 	private function preview_count( string $source ): int {
 		global $wpdb;
 		$key = self::SOURCES[ $source ]['meta']['title'];
-		return (int) $wpdb->get_var(
+		return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- meta-key count across the whole postmeta table has no WP API equivalent.
 			$wpdb->prepare(
-				"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value <> ''", // phpcs:ignore WordPress.DB
+				"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value <> ''",
 				$key
 			)
 		);
@@ -136,8 +136,8 @@ final class MigrationModule extends AbstractModule {
 
 	private function schema_preview_count(): int {
 		global $wpdb;
-		return (int) $wpdb->get_var(
-			"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('rank_math_rich_snippet','_aioseo_schema_type') AND meta_value <> ''" // phpcs:ignore WordPress.DB
+		return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- meta-key count across the whole postmeta table has no WP API equivalent.
+			"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('rank_math_rich_snippet','_aioseo_schema_type') AND meta_value <> ''"
 		);
 	}
 
@@ -148,10 +148,12 @@ final class MigrationModule extends AbstractModule {
 			$keys[] = $config['meta']['og_title'];
 		}
 		$placeholders = implode( ',', array_fill( 0, count( $keys ), '%s' ) );
-		return (int) $wpdb->get_var(
+		return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- meta-key count across the whole postmeta table has no WP API equivalent.
 			$wpdb->prepare(
-				"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ({$placeholders}) AND meta_value <> ''", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$keys
+				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $keys args below.
+				"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ({$placeholders}) AND meta_value <> ''",
+				// phpcs:enable
+				...$keys
 			)
 		);
 	}
@@ -209,7 +211,7 @@ final class MigrationModule extends AbstractModule {
 		echo '<div class="seoistic-tool-card">';
 		echo '<div class="seoistic-tool-head"><div class="seoistic-card-icon"><span class="dashicons dashicons-' . esc_attr( $icon ) . '"></span></div><strong>' . esc_html( $title ) . '</strong></div>';
 		echo '<p>' . esc_html( $desc ) . '</p>';
-		echo '<div class="seoistic-tool-status">' . ( $detected ? View::badge( __( 'Detected', 'seoistic' ), 'good' ) : View::badge( __( 'Not detected', 'seoistic' ), 'neutral' ) );
+		echo '<div class="seoistic-tool-status">' . ( $detected ? View::badge( __( 'Detected', 'seoistic' ), 'good' ) : View::badge( __( 'Not detected', 'seoistic' ), 'neutral' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally.
 		echo ' &nbsp;' . esc_html(
 			sprintf(
 				/* translators: %d: number of posts with importable data. */
@@ -272,17 +274,22 @@ final class MigrationModule extends AbstractModule {
 		global $wpdb;
 		$placeholders = implode( ',', array_fill( 0, count( $meta_keys ), '%s' ) );
 
-		$total = (int) $wpdb->get_var(
+		$total = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- paginated migration batches must read live postmeta; no WP API equivalent.
 			$wpdb->prepare(
-				"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ({$placeholders}) AND meta_value <> ''", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$meta_keys
+				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $meta_keys args below.
+				"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ({$placeholders}) AND meta_value <> ''",
+				// phpcs:enable
+				...$meta_keys
 			)
 		);
 
-		$ids = $wpdb->get_col(
+		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the merged array argument is valid for wpdb::prepare(); the sniff cannot count spread arguments.
+		$ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- paginated migration batches must read live postmeta; no WP API equivalent.
 			$wpdb->prepare(
-				"SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ({$placeholders}) AND meta_value <> '' ORDER BY post_id ASC LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				array_merge( $meta_keys, array( self::BATCH_SIZE, $offset ) )
+				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread args below.
+				"SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ({$placeholders}) AND meta_value <> '' ORDER BY post_id ASC LIMIT %d OFFSET %d",
+				// phpcs:enable
+				...array_merge( $meta_keys, array( self::BATCH_SIZE, $offset ) )
 			)
 		);
 

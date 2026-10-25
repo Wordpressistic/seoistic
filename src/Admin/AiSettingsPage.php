@@ -121,8 +121,8 @@ final class AiSettingsPage {
 		AiSettings::save(
 			array(
 				'enabled'          => isset( $_POST['enabled'] ),
-				'temperature'      => (float) ( $_POST['temperature'] ?? 0.4 ),
-				'max_tokens'       => (int) ( $_POST['max_tokens'] ?? 900 ),
+				'temperature'      => (float) sanitize_text_field( wp_unslash( (string) ( $_POST['temperature'] ?? '0.4' ) ) ),
+				'max_tokens'       => (int) sanitize_text_field( wp_unslash( (string) ( $_POST['max_tokens'] ?? '900' ) ) ),
 				'business_name'    => sanitize_text_field( wp_unslash( $_POST['business_name'] ?? '' ) ),
 				'brand_voice'      => sanitize_textarea_field( wp_unslash( $_POST['brand_voice'] ?? '' ) ),
 				'target_country'   => sanitize_text_field( wp_unslash( $_POST['target_country'] ?? '' ) ),
@@ -130,7 +130,7 @@ final class AiSettingsPage {
 				'default_language' => sanitize_text_field( wp_unslash( $_POST['default_language'] ?? 'en' ) ),
 				'kb_mode'          => sanitize_key( wp_unslash( $_POST['kb_mode'] ?? 'balanced' ) ),
 				'custom_rag_enabled' => isset( $_POST['custom_rag_enabled'] ),
-				'custom_rag_path'  => $this->sanitize_rag_path( (string) wp_unslash( $_POST['custom_rag_path'] ?? '' ) ),
+				'custom_rag_path'  => $this->sanitize_rag_path( (string) wp_unslash( (string) ( $_POST['custom_rag_path'] ?? '' ) ) ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized by sanitize_rag_path().
 				'custom_base_url'  => AiSettings::custom_models_allowed() ? esc_url_raw( wp_unslash( $_POST['custom_base_url'] ?? '' ) ) : '',
 				'custom_model'     => AiSettings::custom_models_allowed() ? sanitize_text_field( wp_unslash( $_POST['custom_model'] ?? '' ) ) : '',
 			)

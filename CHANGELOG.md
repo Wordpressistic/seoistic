@@ -3,6 +3,67 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.3] - 2026-10-26
+
+### Fixed — WordPress Plugin Check: 67 errors and 191 warnings resolved
+
+This release clears the entire Plugin Check (plugin-check) report: security
+escaping, input sanitization and nonce verification, database query
+preparation, internationalization, and plugin packaging.
+
+- **Security — output escaping**: every admin screen now escapes or
+  kses-validates trusted helper output (`View::badge`, score rings, status
+  badges across the dashboard, roadmap, SEO columns, Redirects, Indexistic,
+  Schema Builder, Performance and the editor metabox).
+- **Security — real bug**: Rank Tracker forms printed their nonce fields via
+  `echo wp_nonce_field()`, which echoes the field immediately and orphaned the
+  nonce *outside* the `<form>` — batch run, email report, keyword delete/save
+  and settings forms could fail nonce verification. Nonces now render inside
+  their forms.
+- **Security — input handling**: all `$_POST`/`$_GET`/`$_SERVER`/`$_FILES`
+  reads are unslashed and sanitized at access (performance thresholds, AI
+  settings, metabox fields, redirects, GSC/Connections, rank tracker, uploads).
+  OAuth callbacks document their state-token CSRF protection; read-only admin
+  GET reads are annotated as display-only.
+- **Database**: every custom-table query now goes through `$wpdb->prepare()`
+  with `%i` identifier placeholders (no interpolated table names), dynamic
+  `IN (...)` lists are properly placeholdered and spread, and a real `LIKE`
+  wildcard is passed as a bound value. Fixed four latent
+  wrong-replacement-count `prepare()` calls (AI bulk scans, migrations) that
+  could silently return empty results.
+- **Performance — object caching**: Rank Tracker keywords/positions/history,
+  Indexing Log reads/counts, Schema Blocks, Uptime monitors/checks, Content
+  Decay and Link Graph scans now read from the object cache with
+  generation-based invalidation on every write.
+- **I18n**: translators comments added for every placeholder string; the
+  credit-cost `_n()` now carries a proper singular placeholder.
+- **Removed `error_log()`** from the AI REST runtime-error path (replaced with
+  a transient surfaced to the admin UI), `Update URI` header and the
+  discouraged `load_plugin_textdomain()` call; the `languages/` pot now ships
+  so the Domain Path resolves.
+- **Packaging**: local build scripts now use the same runtime allowlist as CI
+  (assets, lib, src, knowledge, languages, root files) so build tooling and
+  tests can never leak into the distributed ZIP — which is why
+  `scripts/build-release.sh` was flagged as an application file.
+- readme.txt: Tested up to 7.1.
+
+### Improved — SEOISTIC Aurora email design
+
+- All automated emails (scheduled audits, automation runs, Core Web Vitals
+  alerts, rank reports, uptime notifications) now use a premium animated
+  "Aurora" template matching the wp-admin brand: navy hero with the
+  violet→sky aurora bar (CSS-animated where supported, identical static
+  fallback), site context line, status pills, stat cards with tone-colored
+  values, score chips, data tables, and a gradient CTA.
+- Emails now carry real insights instead of bare links: audit digests show
+  pages-to-review / average / worst score with per-page Fix-now links; CWV
+  alerts show one red-banded card per exceeded vital with its threshold;
+  automation notifications show pages audited, average SEO score, AI-draft and
+  approval state plus the audited-pages table; uptime mail shows UP/DOWN,
+  HTTP status, reason and response time.
+- Rank Tracker weekly reports keep full white-label support (brand name,
+  logo, accent color) on top of the new layout.
+
 ## [1.7.2] - 2026-10-16
 
 ### Improved

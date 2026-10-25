@@ -32,18 +32,25 @@ final class LinkGraph {
 	 * @return array<int, array{id:int, title:string, edit_url:string}>
 	 */
 	public static function scan(): array {
+		$cached = wp_cache_get( 'link_graph_scan', 'seoistic_content' );
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
+
 		global $wpdb;
 
 		$public_types = get_post_types( array( 'public' => true ) );
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
 		$limit        = (int) apply_filters( 'seoistic/orphan_scan_limit', 5000 );
 
-		$rows = $wpdb->get_results(
+		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- full-content link extraction has no WP API equivalent.
 			$wpdb->prepare(
+				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below.
 				"SELECT ID, post_title, post_content FROM {$wpdb->posts}
 				 WHERE post_status = 'publish' AND post_type IN ({$placeholders})
-				 ORDER BY ID ASC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				array_merge( $public_types, array( $limit ) )
+				 ORDER BY ID ASC LIMIT %d",
+				// phpcs:enable
+				...array_merge( $public_types, array( $limit ) )
 			),
 			ARRAY_A
 		);
@@ -70,6 +77,7 @@ final class LinkGraph {
 		}
 
 		set_transient( self::TRANSIENT, $orphans, self::TTL );
+		wp_cache_set( 'link_graph_scan', $orphans, 'seoistic_content', 5 * MINUTE_IN_SECONDS );
 		return $orphans;
 	}
 

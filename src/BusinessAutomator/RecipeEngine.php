@@ -340,13 +340,69 @@ final class RecipeEngine {
 			return;
 		}
 		$historyUrl = admin_url('admin.php?page=seoistic-business-automator&tab=history');
+		/* translators: %s: automation recipe name. */
+		$intro = sprintf(__('The automation run “%s” has completed.', 'seoistic'), (string) $run['recipe_name']);
+
+		// Pull the audit context captured for this run so the email carries the
+		// site's real numbers, not a bare link: posts audited + average score.
+		$context = array();
+		foreach ((array) ($run['steps'] ?? array()) as $step) {
+			if ('audit' === ($step['id'] ?? '') && isset($step['data']['posts']) && is_array($step['data']['posts'])) {
+				$context = $step['data'];
+				break;
+			}
+		}
+		$posts = (array) ($context['posts'] ?? array());
+		$scores = array_map(static fn(array $post): int => (int) ($post['score'] ?? 0), $posts);
+		$average = $scores ? (int) round(array_sum($scores) / count($scores)) : null;
+
+		$cards = array();
+		if (array() !== $posts) {
+			$cards[] = array(
+				'label' => __('Pages audited', 'seoistic'),
+				'value' => (string) count($posts),
+				'tone' => 'info',
+			);
+		}
+		if (null !== $average && $average > 0) {
+			$cards[] = array(
+				'label' => __('Average SEO score', 'seoistic'),
+				'value' => $average . '/100',
+				'tone' => $average >= 80 ? 'ok' : ($average >= 50 ? 'warn' : 'bad'),
+			);
+		}
+		$cards[] = array(
+			'label' => __('AI draft', 'seoistic'),
+			'value' => $draft ? __('Ready', 'seoistic') : __('Not needed', 'seoistic'),
+			'tone' => $draft ? 'ok' : 'neutral',
+		);
+		$cards[] = array(
+			'label' => __('Applied', 'seoistic'),
+			'value' => !empty($run['auto_applied']) || $this->was_approved($run) ? __('Yes', 'seoistic') : __('Awaiting approval', 'seoistic'),
+			'tone' => !empty($run['auto_applied']) || $this->was_approved($run) ? 'ok' : 'warn',
+		);
+
+		$content = EmailReportTemplate::stat_cards($cards);
+		if (array() !== $posts) {
+			$rows = array();
+			foreach (array_slice($posts, 0, 10) as $post) {
+				$rows[] = array(
+					EmailReportTemplate::score_chip((int) ($post['score'] ?? 0)),
+					esc_html((string) ($post['title'] ?? '')),
+				);
+			}
+			$content .= EmailReportTemplate::section(__('Audited pages', 'seoistic'));
+			$content .= EmailReportTemplate::data_table(array(__('Score', 'seoistic'), __('Page', 'seoistic')), $rows, 10);
+		}
+
 		$body = EmailReportTemplate::render(
 			(string) $run['recipe_name'],
 			__('A SEOistic automation recipe has completed.', 'seoistic'),
-			sprintf(__('The automation run “%s” has completed.', 'seoistic'), (string) $run['recipe_name']),
-			'<p>' . esc_html__('Open the automation history to review its steps and outcome.', 'seoistic') . '</p>',
+			$intro,
+			$content,
 			__('View Automation History', 'seoistic'),
-			$historyUrl
+			$historyUrl,
+			array('tone' => 'info')
 		);
 		wp_mail(
 			$this->notification_email(),

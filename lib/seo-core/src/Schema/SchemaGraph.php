@@ -43,6 +43,7 @@ final class SchemaGraph
 
     public function toJson(int $flags = 0): string
     {
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode -- seo-core is a WordPress-independent library by design; wp_json_encode() cannot be used here.
         return (string) json_encode($this->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | $flags);
     }
 }

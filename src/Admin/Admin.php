@@ -299,7 +299,7 @@ final class Admin {
 		<section class="aurora-onboarding" data-aurora-onboarding aria-label="<?php esc_attr_e( 'SEOistic onboarding checklist', 'seoistic' ); ?>">
 			<div class="aurora-onboarding-head">
 				<h2 class="aurora-onboarding-title"><span class="dashicons dashicons-superhero-alt" aria-hidden="true"></span><?php esc_html_e( 'Get started with SEOistic', 'seoistic' ); ?></h2>
-				<?php echo View::badge( sprintf( '%d / %d', $complete, count( $steps ) ), $complete === count( $steps ) ? 'good' : 'neutral' ); ?>
+				<?php echo View::badge( sprintf( '%d / %d', $complete, count( $steps ) ), $complete === count( $steps ) ? 'good' : 'neutral' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally. ?>
 			</div>
 			<ul class="aurora-onboarding-list">
 				<?php foreach ( $steps as $step ) : ?>
@@ -455,14 +455,14 @@ final class Admin {
 		if ( $passed ) {
 			echo View::badge( __( 'Passed', 'seoistic' ), 'good' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		} else {
-			echo View::badge(
+			echo View::badge( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally.
 				sprintf(
 					/* translators: %d: number of affected pages. */
 					_n( '%d page', '%d pages', (int) $item['count'], 'seoistic' ),
 					(int) $item['count']
 				),
 				'critical' === ( $item['severity'] ?? '' ) ? 'bad' : 'warn'
-			); // phpcs:ignore WordPress.Security.EscapeOutput
+			);
 			echo View::badge( (string) $item['impact'], 'neutral' ); // phpcs:ignore WordPress.Security.EscapeOutput
 			if ( ! empty( $item['run_audit'] ) ) {
 				echo '<button type="button" class="seoistic-btn seoistic-btn-sm" data-seoistic-run-audit>' . esc_html__( 'Run Site Audit', 'seoistic' ) . '</button>';
@@ -583,7 +583,7 @@ final class Admin {
 
 		echo '<div class="seoistic-addon' . ( $is_locked ? ' is-locked' : '' ) . '" data-categories="' . esc_attr( implode( ',', $categories ) ) . '" data-search="' . esc_attr( strtolower( $module->name() . ' ' . $module->description() ) ) . '">';
 		echo '<div class="seoistic-addon-head"><strong>' . esc_html( $module->name() ) . '</strong>';
-		echo View::badge( $is_premium ? ucfirst( Plans::addon_plan( $module->id() ) ) : __( 'Free', 'seoistic' ), $is_premium ? Plans::addon_plan( $module->id() ) : 'free' );
+		echo View::badge( $is_premium ? ucfirst( Plans::addon_plan( $module->id() ) ) : __( 'Free', 'seoistic' ), $is_premium ? Plans::addon_plan( $module->id() ) : 'free' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally.
 		echo '</div>';
 		echo '<p class="seoistic-addon-desc">' . esc_html( $module->description() ) . '</p>';
 
@@ -646,7 +646,16 @@ final class Admin {
 					<?php if ( ! empty( $tier['featured'] ) ) : ?><span class="seoistic-plan-flag"><?php esc_html_e( 'Main plan', 'seoistic' ); ?></span><?php endif; ?>
 					<h2><?php echo esc_html( (string) $tier['name'] ); ?></h2>
 					<p class="seoistic-plan-price"><?php echo 0 === (int) $tier['price'] ? esc_html__( 'Free', 'seoistic' ) : '$' . (int) $tier['price']; ?> <span>/<?php esc_html_e( 'year', 'seoistic' ); ?></span></p>
-					<p class="seoistic-plan-sites"><?php echo esc_html( is_int( $tier['sites'] ) ? sprintf( _n( '%d site', '%d sites', $tier['sites'], 'seoistic' ), $tier['sites'] ) : (string) $tier['sites'] ); ?></p>
+					<?php
+					$sites_label = is_int( $tier['sites'] )
+						? sprintf(
+							/* translators: %d: number of sites included in the plan. */
+							_n( '%d site', '%d sites', $tier['sites'], 'seoistic' ),
+							$tier['sites']
+						)
+						: (string) $tier['sites'];
+					?>
+					<p class="seoistic-plan-sites"><?php echo esc_html( $sites_label ); ?></p>
 					<ul>
 						<?php foreach ( (array) $tier['features'] as $feature ) : ?><li><?php echo esc_html( (string) $feature ); ?></li><?php endforeach; ?>
 					</ul>
@@ -844,7 +853,8 @@ final class Admin {
 		update_option( 'seoistic_banned_words', sanitize_textarea_field( wp_unslash( $_POST['seoistic_banned_words'] ?? '' ) ) );
 		update_option( 'seoistic_llms_extra', sanitize_textarea_field( wp_unslash( $_POST['seoistic_llms_extra'] ?? '' ) ) );
 
-		$local_raw = isset( $_POST['seoistic_local'] ) && is_array( $_POST['seoistic_local'] ) ? wp_unslash( $_POST['seoistic_local'] ) : array(); // phpcs:ignore WordPress.Security.ValidationSanitization
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- every key/value is sanitized in the loop below.
+		$local_raw = isset( $_POST['seoistic_local'] ) && is_array( $_POST['seoistic_local'] ) ? wp_unslash( $_POST['seoistic_local'] ) : array();
 		$local     = array();
 		foreach ( $local_raw as $key => $value ) {
 			$local[ sanitize_key( $key ) ] = sanitize_text_field( (string) $value );

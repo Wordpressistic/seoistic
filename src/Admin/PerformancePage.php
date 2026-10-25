@@ -62,9 +62,9 @@ final class PerformancePage {
 				'strategy' => sanitize_key( wp_unslash( (string) ( $_POST['strategy'] ?? 'mobile' ) ) ),
 				'notify_email' => sanitize_email( wp_unslash( (string) ( $_POST['notify_email'] ?? '' ) ) ),
 				'hero_url' => esc_url_raw( wp_unslash( (string) ( $_POST['hero_url'] ?? '' ) ) ),
-				'lcp' => (float) wp_unslash( ( $_POST['lcp'] ?? PerformanceService::DEFAULT_LCP ) ),
-				'cls' => (float) wp_unslash( ( $_POST['cls'] ?? PerformanceService::DEFAULT_CLS ) ),
-				'inp' => (float) wp_unslash( ( $_POST['inp'] ?? PerformanceService::DEFAULT_INP ) ),
+				'lcp' => (float) sanitize_text_field( wp_unslash( (string) ( $_POST['lcp'] ?? PerformanceService::DEFAULT_LCP ) ) ),
+				'cls' => (float) sanitize_text_field( wp_unslash( (string) ( $_POST['cls'] ?? PerformanceService::DEFAULT_CLS ) ) ),
+				'inp' => (float) sanitize_text_field( wp_unslash( (string) ( $_POST['inp'] ?? PerformanceService::DEFAULT_INP ) ) ),
 			)
 		);
 		wp_safe_redirect( admin_url( 'admin.php?page=seoistic-performance&updated=1' ) );
@@ -98,6 +98,7 @@ final class PerformancePage {
 			View::card( 'performance', $value, $card['label'], $card['tone'], $trend, 0.0 === $card['change'] || ( null !== $card['change'] && $card['change'] < 0 ) ? 'good' : 'bad' );
 		}
 		echo '</div>';
+		/* translators: %s: URL of the most recent performance check. */
 		echo '<p class="description">' . esc_html( sprintf( __( 'Latest checked URL: %s', 'seoistic' ), $url ) ) . '</p>';
 	}
 
@@ -121,7 +122,7 @@ final class PerformancePage {
 		echo '<div class="seoistic-cards">';
 		foreach ( PerformanceService::quick_wins() as $win ) {
 			echo '<div class="seoistic-tool-card">';
-			echo '<div class="seoistic-tool-head"><div class="seoistic-card-icon"><span class="dashicons dashicons-controls-play"></span></div><strong>' . esc_html( $win['title'] ) . '</strong>' . ( $win['enabled'] ? View::badge( __( 'Enabled', 'seoistic' ), 'good' ) : '' ) . '</div>';
+			echo '<div class="seoistic-tool-head"><div class="seoistic-card-icon"><span class="dashicons dashicons-controls-play"></span></div><strong>' . esc_html( $win['title'] ) . '</strong>' . ( $win['enabled'] ? View::badge( __( 'Enabled', 'seoistic' ), 'good' ) : '' ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally.
 			echo '<p>' . esc_html( $win['description'] ) . '</p>';
 			echo '<p class="description">' . esc_html( $win['conflict'] ) . '</p>';
 			echo '<div class="seoistic-tool-result" data-seoistic-quick-win-result hidden></div>';

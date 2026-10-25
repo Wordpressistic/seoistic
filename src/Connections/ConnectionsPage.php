@@ -263,8 +263,8 @@ final class ConnectionsPage {
 		}
 		check_admin_referer( 'seoistic_connections_save_client' );
 		ConnectionsSettings::save_client(
-			isset( $_POST['client_id'] ) ? (string) wp_unslash( $_POST['client_id'] ) : '',
-			isset( $_POST['client_secret'] ) ? (string) wp_unslash( $_POST['client_secret'] ) : ''
+			isset( $_POST['client_id'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['client_id'] ) ) : '',
+			isset( $_POST['client_secret'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['client_secret'] ) ) : ''
 		);
 		wp_safe_redirect( admin_url( 'admin.php?page=seoistic-connections&saved=1' ) );
 		exit;
@@ -274,8 +274,10 @@ final class ConnectionsPage {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'seoistic' ) );
 		}
-		$code  = isset( $_GET['code'] ) ? (string) wp_unslash( $_GET['code'] ) : '';
-		$state = isset( $_GET['state'] ) ? (string) wp_unslash( $_GET['state'] ) : '';
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- OAuth 2.0 redirect response; the single-use state token validated below is the CSRF protection (no nonce exists on this flow).
+		$code  = isset( $_GET['code'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['code'] ) ) : '';
+		$state = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['state'] ) ) : '';
+		// phpcs:enable
 		if ( '' === $code || ! ConnectionsSettings::valid_state( $state ) ) {
 			wp_safe_redirect( admin_url( 'admin.php?page=seoistic-connections&error=state' ) );
 			exit;
@@ -292,13 +294,13 @@ final class ConnectionsPage {
 		check_admin_referer( 'seoistic_connections_save_selection' );
 		$patch = array();
 		if ( isset( $_POST['property_id'] ) ) {
-			$patch['property_id'] = preg_replace( '/[^0-9]/', '', (string) wp_unslash( $_POST['property_id'] ) );
+			$patch['property_id'] = preg_replace( '/[^0-9]/', '', sanitize_text_field( wp_unslash( (string) $_POST['property_id'] ) ) );
 		}
 		if ( isset( $_POST['gsc_site'] ) ) {
-			$patch['gsc_site'] = (string) wp_unslash( $_POST['gsc_site'] );
+			$patch['gsc_site'] = sanitize_text_field( wp_unslash( (string) $_POST['gsc_site'] ) );
 		}
 		if ( isset( $_POST['psi_api_key'] ) ) {
-			$patch['psi_api_key'] = (string) wp_unslash( $_POST['psi_api_key'] );
+			$patch['psi_api_key'] = sanitize_text_field( wp_unslash( (string) $_POST['psi_api_key'] ) );
 		}
 		ConnectionsSettings::save( $patch );
 		wp_safe_redirect( admin_url( 'admin.php?page=seoistic-connections&saved=1' ) );

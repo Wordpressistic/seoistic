@@ -75,9 +75,9 @@ final class RankTrackerPage {
 		}
 		$repository = new RankTrackerRepository();
 		$repository->save_keyword(
-			(string) wp_unslash( (string) ( $_POST['keyword'] ?? '' ) ),
-			(string) wp_unslash( (string) ( $_POST['locale'] ?? 'en-US' ) ),
-			(string) wp_unslash( (string) ( $_POST['device'] ?? 'desktop' ) ),
+			sanitize_text_field( wp_unslash( (string) ( $_POST['keyword'] ?? '' ) ) ),
+			sanitize_text_field( wp_unslash( (string) ( $_POST['locale'] ?? 'en-US' ) ) ),
+			sanitize_key( wp_unslash( (string) ( $_POST['device'] ?? 'desktop' ) ) ),
 			 RankTrackerService::settings()['mode']
 		);
 		wp_safe_redirect( admin_url( 'admin.php?page=seoistic-rank-tracker&updated=keyword' ) );
@@ -131,8 +131,10 @@ final class RankTrackerPage {
 	}
 
 	private function notice(): void {
-		$message = (string) ( $_GET['updated'] ?? '' );
-		$error_code = sanitize_key( (string) ( $_GET['error_code'] ?? '' ) );
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only display of admin-redirect status slugs; no form is processed.
+		$message = sanitize_key( (string) wp_unslash( (string) ( $_GET['updated'] ?? '' ) ) );
+		$error_code = sanitize_key( (string) wp_unslash( (string) ( $_GET['error_code'] ?? '' ) ) );
+		// phpcs:enable
 		$messages = array(
 			'settings' => __( 'Rank Tracker settings saved.', 'seoistic' ),
 			'keyword' => __( 'Keyword saved.', 'seoistic' ),
@@ -163,8 +165,12 @@ final class RankTrackerPage {
 		echo '<label for="seoistic-rank-locale">' . esc_html__( 'Locale', 'seoistic' ) . '</label><input id="seoistic-rank-locale" name="locale" type="text" value="' . esc_attr( $this->current_locale() ) . '">';
 		echo '<label for="seoistic-rank-device">' . esc_html__( 'Device', 'seoistic' ) . '</label><select id="seoistic-rank-device" name="device"><option value="">' . esc_html__( 'All', 'seoistic' ) . '</option><option value="desktop"' . selected( 'desktop', $this->current_device(), false ) . '>' . esc_html__( 'Desktop', 'seoistic' ) . '</option><option value="mobile"' . selected( 'mobile', $this->current_device(), false ) . '>' . esc_html__( 'Mobile', 'seoistic' ) . '</option></select>';
 		echo '<button class="seoistic-btn seoistic-btn-sm" type="submit">' . esc_html__( 'Filter', 'seoistic' ) . '</button></form><div class="seoistic-rank-actions">';
-		echo '<form method="post" action="' . esc_url( $action ) . '">' . wp_nonce_field( 'seoistic_run_rank_tracker' ) . '<input type="hidden" name="action" value="seoistic_run_rank_tracker"><button class="seoistic-btn seoistic-btn-primary" type="submit">' . esc_html__( 'Run batch now', 'seoistic' ) . '</button></form>';
-		echo '<form method="post" action="' . esc_url( $action ) . '">' . wp_nonce_field( 'seoistic_send_rank_report' ) . '<input type="hidden" name="action" value="seoistic_send_rank_report"><button class="seoistic-btn" type="submit">' . esc_html__( 'Email report', 'seoistic' ) . '</button></form>';
+		echo '<form method="post" action="' . esc_url( $action ) . '">';
+		wp_nonce_field( 'seoistic_run_rank_tracker' );
+		echo '<input type="hidden" name="action" value="seoistic_run_rank_tracker"><button class="seoistic-btn seoistic-btn-primary" type="submit">' . esc_html__( 'Run batch now', 'seoistic' ) . '</button></form>';
+		echo '<form method="post" action="' . esc_url( $action ) . '">';
+		wp_nonce_field( 'seoistic_send_rank_report' );
+		echo '<input type="hidden" name="action" value="seoistic_send_rank_report"><button class="seoistic-btn" type="submit">' . esc_html__( 'Email report', 'seoistic' ) . '</button></form>';
 		echo '</div></div>';
 		echo '<p class="description">' . esc_html( 'gsc' === $settings['mode'] ? __( 'Current mode: Search Console data (delayed).', 'seoistic' ) : __( 'Current mode: WPistic Search API.', 'seoistic' ) ) . '</p>';
 	}
@@ -181,12 +187,16 @@ final class RankTrackerPage {
 			$badge = null === $change ? 'neutral' : ( $change > 0 ? 'good' : ( $change < 0 ? 'bad' : 'neutral' ) );
 			$label = null === $change ? '—' : ( $change > 0 ? '▲ ' : ( $change < 0 ? '▼ ' : '' ) ) . number_format_i18n( abs( (float) $change ), 1 );
 			echo '<tr data-rank-row="' . esc_attr( (string) $id ) . '"><td><strong>' . esc_html( (string) $keyword['keyword'] ) . '</strong></td><td>' . esc_html( (string) $keyword['locale'] ) . '</td><td>' . esc_html( (string) $keyword['device'] ) . '</td><td class="seoistic-rank-current">' . ( null === $row['current'] ? '—' : esc_html( number_format_i18n( (float) $row['current'], 1 ) ) ) . '</td><td><span class="seoistic-badge ' . esc_attr( $badge ) . '">' . esc_html( (string) $label ) . '</span></td><td><svg class="seoistic-sparkline" data-rank-sparkline="' . esc_attr( (string) $id ) . '" viewBox="0 0 96 24" role="img" aria-label="' . esc_attr__( 'Position trend', 'seoistic' ) . '"></svg></td><td>' . esc_html( (string) $row['source_label'] ) . '</td><td>';
-			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">' . wp_nonce_field( 'seoistic_rank_keyword' ) . '<input type="hidden" name="action" value="seoistic_delete_rank_keyword"><input type="hidden" name="id" value="' . esc_attr( (string) $id ) . '"><button class="seoistic-btn seoistic-btn-danger seoistic-btn-sm" type="submit">' . esc_html__( 'Delete', 'seoistic' ) . '</button></form>';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( 'seoistic_rank_keyword' );
+			echo '<input type="hidden" name="action" value="seoistic_delete_rank_keyword"><input type="hidden" name="id" value="' . esc_attr( (string) $id ) . '"><button class="seoistic-btn seoistic-btn-danger seoistic-btn-sm" type="submit">' . esc_html__( 'Delete', 'seoistic' ) . '</button></form>';
 			echo '<button class="seoistic-btn seoistic-btn-sm" type="button" data-rank-history-toggle="' . esc_attr( (string) $id ) . '" aria-expanded="false">' . esc_html__( 'History', 'seoistic' ) . '</button></td></tr>';
 			echo '<tr class="seoistic-rank-history" data-rank-history="' . esc_attr( (string) $id ) . '" hidden><td colspan="8"><figure><figcaption>' . esc_html( (string) $keyword['keyword'] ) . '</figcaption><svg data-rank-chart="' . esc_attr( (string) $id ) . '" viewBox="0 0 640 180" role="img" aria-label="' . esc_attr__( 'Position history', 'seoistic' ) . '"></svg></figure></td></tr>';
 		}
 		echo '</tbody></table></div>';
-		echo '<form class="seoistic-rank-add" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">' . wp_nonce_field( 'seoistic_rank_keyword' ) . '<input type="hidden" name="action" value="seoistic_save_rank_keyword">';
+		echo '<form class="seoistic-rank-add" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		wp_nonce_field( 'seoistic_rank_keyword' );
+		echo '<input type="hidden" name="action" value="seoistic_save_rank_keyword">';
 		echo '<label for="seoistic-new-keyword">' . esc_html__( 'Keyword', 'seoistic' ) . '</label><input id="seoistic-new-keyword" name="keyword" type="text" required>';
 		echo '<label for="seoistic-new-locale">' . esc_html__( 'Locale', 'seoistic' ) . '</label><input id="seoistic-new-locale" name="locale" type="text" value="en-US">';
 		echo '<label for="seoistic-new-device">' . esc_html__( 'Device', 'seoistic' ) . '</label><select id="seoistic-new-device" name="device"><option value="desktop">' . esc_html__( 'Desktop', 'seoistic' ) . '</option><option value="mobile">' . esc_html__( 'Mobile', 'seoistic' ) . '</option></select>';
@@ -201,7 +211,9 @@ final class RankTrackerPage {
 
 	private function render_settings( array $settings ): void {
 		echo '<div class="seoistic-section-title">' . esc_html__( 'Tracking & reporting', 'seoistic' ) . '</div><div class="seoistic-rank-settings">';
-		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">' . wp_nonce_field( 'seoistic_rank_settings' ) . '<input type="hidden" name="action" value="seoistic_save_rank_settings">';
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		wp_nonce_field( 'seoistic_rank_settings' );
+		echo '<input type="hidden" name="action" value="seoistic_save_rank_settings">';
 		echo '<label><input type="checkbox" name="enabled"' . checked( $settings['enabled'], true, false ) . '> ' . esc_html__( 'Enable daily checks', 'seoistic' ) . '</label>';
 		echo '<label><input type="radio" name="mode" value="search_api"' . checked( $settings['mode'], 'search_api', false ) . '> ' . esc_html__( 'WPistic Search API', 'seoistic' ) . '</label>';
 		echo '<label><input type="radio" name="mode" value="gsc"' . checked( $settings['mode'], 'gsc', false ) . '> ' . esc_html__( 'Search Console data (delayed)', 'seoistic' ) . '</label>';
@@ -216,11 +228,13 @@ final class RankTrackerPage {
 	}
 
 	private function current_locale(): string {
-		$locale = (string) wp_unslash( (string) ( $_GET['locale'] ?? '' ) );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter value for display; sanitized below.
+		$locale = sanitize_text_field( wp_unslash( (string) ( $_GET['locale'] ?? '' ) ) );
 		return ( new RankTrackerRepository() )->sanitize_locale( $locale );
 	}
 
 	private function current_device(): string {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter value for display; whitelisted below.
 		$device = sanitize_key( (string) wp_unslash( (string) ( $_GET['device'] ?? '' ) ) );
 		return in_array( $device, array( 'desktop', 'mobile' ), true ) ? $device : '';
 	}

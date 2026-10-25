@@ -34,79 +34,81 @@ final class DashboardMetrics {
 		unset( $public_types['attachment'] ); // Media library items are not SEO pages.
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
 
-		$total_published = (int) $wpdb->get_var(
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args in each prepare; the sniff cannot count spread arguments.
+		$total_published = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- aggregate dashboard metrics; cached in the transient below.
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_type IN ({$placeholders})", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$public_types
+				"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_type IN ({$placeholders})",
+				...$public_types
 			)
 		);
 
-		$scored = (int) $wpdb->get_var(
+		$scored = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- aggregate dashboard metrics; cached in the transient below.
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} m ON m.post_id = p.ID
-				 WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND m.meta_key = '_seoistic_score'", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$public_types
+				 WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND m.meta_key = '_seoistic_score'",
+				...$public_types
 			)
 		);
 
-		$avg_score = $scored > 0 ? (float) $wpdb->get_var(
+		$avg_score = $scored > 0 ? (float) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- aggregate dashboard metrics; cached in the transient below.
 			$wpdb->prepare(
 				"SELECT AVG(CAST(m.meta_value AS UNSIGNED)) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} m ON m.post_id = p.ID
-				 WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND m.meta_key = '_seoistic_score'", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$public_types
+				 WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND m.meta_key = '_seoistic_score'",
+				...$public_types
 			)
 		) : 0.0;
 
-		$noindex_count = (int) $wpdb->get_var(
+		$noindex_count = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- aggregate dashboard metrics; cached in the transient below.
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} m ON m.post_id = p.ID
-				 WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND ( ( m.meta_key = '_seoistic_noindex' AND m.meta_value = '1' ) OR ( m.meta_key = '_seoistic_robots' AND m.meta_value = 'noindex' ) )", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$public_types
+				 WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND ( ( m.meta_key = '_seoistic_noindex' AND m.meta_value = '1' ) OR ( m.meta_key = '_seoistic_robots' AND m.meta_value = 'noindex' ) )",
+				...$public_types
 			)
 		);
 
-		$missing_meta = (int) $wpdb->get_var(
+		$missing_meta = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- aggregate dashboard metrics; cached in the transient below.
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders})
 				 AND p.ID NOT IN (
 					SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ('_seoistic_description','_seoistic_desc') AND meta_value <> ''
-				 )", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$public_types
+				 )",
+				...$public_types
 			)
 		);
 
-		$missing_title = (int) $wpdb->get_var(
+		$missing_title = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- aggregate dashboard metrics; cached in the transient below.
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders})
 				 AND p.ID NOT IN (
 					SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_title' AND meta_value <> ''
-				 )", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$public_types
+				 )",
+				...$public_types
 			)
 		);
 
-		$low_score_count = (int) $wpdb->get_var(
+		$low_score_count = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- aggregate dashboard metrics; cached in the transient below.
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} m ON m.post_id = p.ID
 				 WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND m.meta_key = '_seoistic_score'
-				 AND CAST(m.meta_value AS UNSIGNED) < 50", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$public_types
+				 AND CAST(m.meta_value AS UNSIGNED) < 50",
+				...$public_types
 			)
 		);
 
-		$missing_keyword = (int) $wpdb->get_var(
+		$missing_keyword = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- aggregate dashboard metrics; cached in the transient below.
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders})
 				 AND p.ID NOT IN (
 					SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ('_seoistic_focus_keyword','_seoistic_focus_kw') AND meta_value <> ''
-				 )", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$public_types
+				 )",
+				...$public_types
 			)
 		);
+		// phpcs:enable
 
 		$log_table = $wpdb->prefix . 'seoistic_log_404';
-		$has_404_table = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $log_table ) ) === $log_table; // phpcs:ignore WordPress.DB
-		$errors_404 = $has_404_table ? (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$log_table}" ) : null; // phpcs:ignore WordPress.DB
+		$has_404_table = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $log_table ) ) === $log_table; // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- existence probe for the plugin-owned 404 log table.
+		$errors_404 = $has_404_table ? (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $log_table ) ) : null; // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- aggregate dashboard metrics; cached in the transient below.
 
 		$redirects_table = $wpdb->prefix . 'seoistic_redirects';
 		$has_redirects_table = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $redirects_table ) ) === $redirects_table; // phpcs:ignore WordPress.DB

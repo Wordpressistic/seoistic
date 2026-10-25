@@ -120,12 +120,16 @@ final class PerformanceModule extends AbstractModule {
 		if ( empty( $result['success'] ) ) {
 			return new WP_Error( 'seoistic_htaccess_failed', $result['error'] ?? __( 'Could not apply the optimization.', 'seoistic' ), array( 'status' => 500 ) );
 		}
-		return rest_ensure_response( array( 'success' => true, 'data' => array( 'message' => sprintf( __( '%1$s applied. Backup: %2$s', 'seoistic' ), $win['title'], $result['backup'] ?? __( 'none', 'seoistic' ) ) ) ) );
+		/* translators: 1: optimization title, 2: backup file name or "none". */
+		$applied_message = sprintf( __( '%1$s applied. Backup: %2$s', 'seoistic' ), $win['title'], $result['backup'] ?? __( 'none', 'seoistic' ) );
+		return rest_ensure_response( array( 'success' => true, 'data' => array( 'message' => $applied_message ) ) );
 	}
 
 	private function quick_win_message( array $win ): array {
+		/* translators: %s: optimization title. */
+		$preview_message = sprintf( __( 'Dry-run preview for %s. No file was changed.', 'seoistic' ), $win['title'] );
 		return array(
-			'message' => sprintf( __( 'Dry-run preview for %s. No file was changed.', 'seoistic' ), $win['title'] ),
+			'message' => $preview_message,
 			'rules' => $win['rules'],
 			'conflict' => $win['conflict'],
 			'preview_token' => PerformanceService::quick_win_preview_token( $win['action'] ),

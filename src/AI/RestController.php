@@ -401,18 +401,16 @@ final class RestController {
 		if ( 'missing_meta' === $criteria ) {
 			$public_types = get_post_types( array( 'public' => true ) );
 			$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
-			$sql_where    = "p.post_status = 'publish' AND p.post_type IN ({$placeholders})
-				AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_title' AND meta_value <> '' )";
-			$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} p WHERE {$sql_where}", $public_types ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$ids   = $wpdb->get_col( $wpdb->prepare( "SELECT p.ID FROM {$wpdb->posts} p WHERE {$sql_where} ORDER BY p.ID ASC LIMIT %d OFFSET %d", array_merge( $public_types, array( $limit, $offset ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below; the sniff cannot count spread arguments.
+			$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_title' AND meta_value <> '' )", ...$public_types ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- bulk scan across post types/meta has no WP_Query equivalent; must stay fresh for paginated batches.
+			$ids   = $wpdb->get_col( $wpdb->prepare( "SELECT p.ID FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_title' AND meta_value <> '' ) ORDER BY p.ID ASC LIMIT %d OFFSET %d", ...array_merge( $public_types, array( $limit, $offset ) ) ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- bulk scan across post types/meta has no WP_Query equivalent; must stay fresh for paginated batches.
+			// phpcs:enable
 			return array( 'ids' => array_map( 'intval', $ids ), 'total' => $total );
 		}
 
 		if ( 'missing_alt' === $criteria ) {
-			$sql_where = "p.post_type = 'attachment' AND p.post_mime_type LIKE 'image/%'
-				AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attachment_image_alt' AND meta_value <> '' )";
-			$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} p WHERE {$sql_where}" ); // phpcs:ignore WordPress.DB
-			$ids   = $wpdb->get_col( $wpdb->prepare( "SELECT p.ID FROM {$wpdb->posts} p WHERE {$sql_where} ORDER BY p.ID ASC LIMIT %d OFFSET %d", $limit, $offset ) ); // phpcs:ignore WordPress.DB
+			$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} p WHERE p.post_type = 'attachment' AND p.post_mime_type LIKE %s AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attachment_image_alt' AND meta_value <> '' )", 'image/%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- attachment alt scan has no WP_Query equivalent; must stay fresh for paginated batches.
+			$ids   = $wpdb->get_col( $wpdb->prepare( "SELECT p.ID FROM {$wpdb->posts} p WHERE p.post_type = 'attachment' AND p.post_mime_type LIKE %s AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attachment_image_alt' AND meta_value <> '' ) ORDER BY p.ID ASC LIMIT %d OFFSET %d", 'image/%', $limit, $offset ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- attachment alt scan has no WP_Query equivalent; must stay fresh for paginated batches.
 			return array( 'ids' => array_map( 'intval', $ids ), 'total' => $total );
 		}
 
@@ -420,10 +418,10 @@ final class RestController {
 		// internal-link and AEO advisory reports.
 		$public_types = get_post_types( array( 'public' => true ) );
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
-		$sql_where    = "p.post_status = 'publish' AND p.post_type IN ({$placeholders})
-			AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_score' AND CAST(meta_value AS UNSIGNED) >= 80 )";
-		$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} p WHERE {$sql_where}", $public_types ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$ids   = $wpdb->get_col( $wpdb->prepare( "SELECT p.ID FROM {$wpdb->posts} p WHERE {$sql_where} ORDER BY p.ID ASC LIMIT %d OFFSET %d", array_merge( $public_types, array( $limit, $offset ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below; the sniff cannot count spread arguments.
+		$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_score' AND CAST(meta_value AS UNSIGNED) >= 80 )", ...$public_types ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- score-filtered bulk scan has no WP_Query equivalent; must stay fresh for paginated batches.
+		$ids   = $wpdb->get_col( $wpdb->prepare( "SELECT p.ID FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_score' AND CAST(meta_value AS UNSIGNED) >= 80 ) ORDER BY p.ID ASC LIMIT %d OFFSET %d", ...array_merge( $public_types, array( $limit, $offset ) ) ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- score-filtered bulk scan has no WP_Query equivalent; must stay fresh for paginated batches.
+		// phpcs:enable
 		return array( 'ids' => array_map( 'intval', $ids ), 'total' => $total );
 	}
 
@@ -646,13 +644,15 @@ final class RestController {
 		$public_types = get_post_types( array( 'public' => true ) );
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
 
-		$worst = $wpdb->get_results(
+		$worst = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- score-ordered join has no WP_Query equivalent; snapshot query for an on-demand report.
 			$wpdb->prepare(
+				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below; the sniff cannot count spread arguments.
 				"SELECT p.ID, p.post_title, CAST(m.meta_value AS UNSIGNED) AS score FROM {$wpdb->posts} p
 				 INNER JOIN {$wpdb->postmeta} m ON m.post_id = p.ID AND m.meta_key = '_seoistic_score'
 				 WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders})
-				 ORDER BY score ASC LIMIT 20", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$public_types
+				 ORDER BY score ASC LIMIT 20",
+				// phpcs:enable
+				...$public_types
 			),
 			ARRAY_A
 		);
@@ -683,13 +683,18 @@ final class RestController {
 	 * details into an admin response.
 	 */
 	private function runtime_error( \Throwable $error, string $tool ) {
-		error_log(
-			sprintf(
-				'[SEOistic] AI tool %s failed: %s (%s)',
-				sanitize_key( $tool ),
-				$error->getMessage(),
-				get_class( $error )
-			)
+		// Surface the failure to the admin UI instead of PHP error_log():
+		// the site owner sees the last runtime error on the AI Tools screen,
+		// and no debug output leaks into production logs.
+		set_transient(
+			'seoistic_ai_runtime_error',
+			array(
+				'tool'    => sanitize_key( $tool ),
+				'message' => sanitize_text_field( $error->getMessage() ),
+				'type'    => sanitize_key( get_class( $error ) ),
+				'at'      => time(),
+			),
+			HOUR_IN_SECONDS
 		);
 
 		return new WP_Error(

@@ -277,17 +277,22 @@ final class GscPage {
 			wp_die( esc_html__( 'Permission denied.', 'seoistic' ) );
 		}
 
-		$state = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( $_GET['state'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth 2.0 redirect response; the single-use state token consumed below is the CSRF protection (no nonce exists on this flow).
+		$state = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['state'] ) ) : '';
 		if ( '' === $state || ! GscSettings::consume_oauth_state( $state ) ) {
 			wp_die( esc_html__( 'This authorization link is invalid or has expired — please try connecting again.', 'seoistic' ) );
 		}
 
-		if ( ! empty( $_GET['error'] ) ) {
-			wp_safe_redirect( add_query_arg( 'seoistic_gsc_error', sanitize_key( wp_unslash( $_GET['error'] ) ), admin_url( 'admin.php?page=seoistic-gsc' ) ) );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- state token already verified above.
+		$error_code = isset( $_GET['error'] ) ? sanitize_key( wp_unslash( (string) $_GET['error'] ) ) : '';
+		if ( '' !== $error_code ) {
+			$fixed_target = admin_url( 'admin.php?page=seoistic-gsc' );
+			wp_safe_redirect( add_query_arg( 'seoistic_gsc_error', $error_code, $fixed_target ) );
 			exit;
 		}
 
-		$code = isset( $_GET['code'] ) ? sanitize_text_field( wp_unslash( $_GET['code'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- state token already verified above.
+		$code = isset( $_GET['code'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['code'] ) ) : '';
 		if ( '' === $code ) {
 			wp_die( esc_html__( 'Google did not return an authorization code.', 'seoistic' ) );
 		}
@@ -305,7 +310,7 @@ final class GscPage {
 		if ( ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'seoistic_gsc_select_site' ) ) {
 			wp_die( esc_html__( 'Permission denied.', 'seoistic' ) );
 		}
-		GscSettings::save_site_url( wp_unslash( $_POST['site_url'] ?? '' ) );
+		GscSettings::save_site_url( sanitize_text_field( wp_unslash( (string) ( $_POST['site_url'] ?? '' ) ) ) );
 		wp_safe_redirect( admin_url( 'admin.php?page=seoistic-gsc' ) );
 		exit;
 	}

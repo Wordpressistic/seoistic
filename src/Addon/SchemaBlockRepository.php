@@ -65,28 +65,51 @@ final class SchemaBlockRepository {
 		'author_url',
 	);
 
+	private const CACHE_GROUP = 'seoistic_schema_blocks';
+	private const CACHE_TTL   = 300;
+
 	public function table(): string {
 		global $wpdb;
 		return $wpdb->prefix . 'seoistic_schema_blocks';
+	}
+
+	private function cache_generation(): int {
+		$gen = wp_cache_get( 'generation', self::CACHE_GROUP );
+		return is_int( $gen ) && $gen > 0 ? $gen : (int) ( time() / 60 );
 	}
 
 	/**
 	 * @return array<int, array<string, mixed>>
 	 */
 	public function all(): array {
-		global $wpdb;
+		$cache_key = 'all_' . $this->cache_generation();
+		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
 
-		$rows = $wpdb->get_results( "SELECT * FROM {$this->table()} ORDER BY title ASC", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		return array_map( array( $this, 'hydrate' ), is_array( $rows ) ? $rows : array() );
+		global $wpdb;
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i ORDER BY title ASC', $this->table() ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- plugin-owned custom table; no WordPress API exists for it.
+		$blocks = array_map( array( $this, 'hydrate' ), is_array( $rows ) ? $rows : array() );
+		wp_cache_set( $cache_key, $blocks, self::CACHE_GROUP, self::CACHE_TTL );
+		return $blocks;
 	}
 
 	/**
 	 * @return array<string, mixed>
 	 */
 	public function find( int $id ): array {
+		$cache_key = 'find_' . $this->cache_generation() . '_' . $id;
+		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
+
 		global $wpdb;
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$this->table()} WHERE id = %d", $id ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		return is_array( $row ) ? $this->hydrate( $row ) : array();
+		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', $this->table(), $id ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- plugin-owned custom table; no WordPress API exists for it.
+		$block = is_array( $row ) ? $this->hydrate( $row ) : array();
+		wp_cache_set( $cache_key, $block, self::CACHE_GROUP, self::CACHE_TTL );
+		return $block;
 	}
 
 	public function save_from_request( array $raw ): array {
@@ -136,23 +159,26 @@ final class SchemaBlockRepository {
 		);
 		global $wpdb;
 		if ( $id > 0 ) {
-			$wpdb->update( $this->table(), $row, array( 'id' => $id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->update( $this->table(), $row, array( 'id' => $id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- plugin-owned custom table; no WordPress API exists for it.
 		} else {
 			$row['created_at'] = $now;
-			$wpdb->insert( $this->table(), $row ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->insert( $this->table(), $row ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- plugin-owned custom table; no WordPress API exists for it.
 		}
+		wp_cache_delete( 'generation', self::CACHE_GROUP );
 
 		return array( $wpdb->last_error === '' ? 'success' : 'error', $wpdb->last_error === '' ? array() : array( __( 'The block could not be saved.', 'seoistic' ) ), $data );
 	}
 
 	public function delete( int $id ): void {
 		global $wpdb;
-		$wpdb->delete( $this->table(), array( 'id' => $id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->delete( $this->table(), array( 'id' => $id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- plugin-owned custom table; no WordPress API exists for it.
+		wp_cache_delete( 'generation', self::CACHE_GROUP );
 	}
 
 	public function set_active( int $id, bool $active ): void {
 		global $wpdb;
-		$wpdb->update( $this->table(), array( 'active' => $active ? 1 : 0, 'updated_at' => current_time( 'mysql', true ) ), array( 'id' => $id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->update( $this->table(), array( 'active' => $active ? 1 : 0, 'updated_at' => current_time( 'mysql', true ) ), array( 'id' => $id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- plugin-owned custom table; no WordPress API exists for it.
+		wp_cache_delete( 'generation', self::CACHE_GROUP );
 	}
 
 	public function toggle( int $id ): void {

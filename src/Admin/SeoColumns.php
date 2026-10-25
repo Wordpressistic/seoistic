@@ -62,7 +62,7 @@ final class SeoColumns {
 	private function render_score( int $post_id ): void {
 		$score = PostSeo::score( $post_id );
 		if ( $score < 0 ) {
-			echo View::badge( __( 'Not scored', 'seoistic' ), 'neutral' );
+			echo View::badge( __( 'Not scored', 'seoistic' ), 'neutral' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally.
 			return;
 		}
 		echo View::score_ring( $score, 'sm' ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -90,16 +90,16 @@ final class SeoColumns {
 		$status = PostSeo::index_status( $post_id, $post->post_status );
 		switch ( $status ) {
 			case 'indexable':
-				echo View::badge( __( 'Indexable', 'seoistic' ), 'indexable' );
+				echo View::badge( __( 'Indexable', 'seoistic' ), 'indexable' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally.
 				break;
 			case 'noindex':
-				echo View::badge( __( 'Noindex', 'seoistic' ), 'noindex' );
+				echo View::badge( __( 'Noindex', 'seoistic' ), 'noindex' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally.
 				break;
 			case 'private':
-				echo View::badge( __( 'Private', 'seoistic' ), 'draft' );
+				echo View::badge( __( 'Private', 'seoistic' ), 'draft' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally.
 				break;
 			default:
-				echo View::badge( __( 'Draft', 'seoistic' ), 'draft' );
+				echo View::badge( __( 'Draft', 'seoistic' ), 'draft' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally.
 				break;
 		}
 	}

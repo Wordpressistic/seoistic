@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-	[string]$Version = '1.7.2'
+	[string]$Version = '1.7.3'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -9,14 +9,23 @@ $dist = Join-Path $root 'dist'
 $stage = Join-Path ([System.IO.Path]::GetTempPath()) ('seoistic-release-' + [guid]::NewGuid().ToString('N'))
 $packageRoot = Join-Path $stage 'seoistic'
 
+# Runtime allowlist — identical to the CI "runtime-only distribution" step in
+# .github/workflows/php.yml. Build tooling (scripts/, tests/, docs/) must never
+# ship inside the plugin zip: WordPress Plugin Check flags application files.
+$runtimeFiles = @(
+	'assets', 'lib', 'src', 'knowledge', 'languages',
+	'seoistic.php', 'uninstall.php', 'LICENSE', 'readme.txt',
+	'CHANGELOG.md', 'README.md', 'composer.json'
+)
+
 try {
 	New-Item -ItemType Directory -Path $packageRoot, $dist -Force | Out-Null
-	$excluded = @('.git', '.github', 'tests', 'node_modules', 'dist', '.env')
-	# Dot-prefixed entries are never shipped: VCS dirs, tool caches (.mimosa),
-	# editor state — nothing inside a hidden folder belongs in the plugin zip.
-	Get-ChildItem -LiteralPath $root -Force |
-		Where-Object { $excluded -notcontains $_.Name -and $_.Name -notlike '.*' } |
-		ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $packageRoot -Recurse -Force }
+	foreach ( $name in $runtimeFiles ) {
+		$source = Join-Path $root $name
+		if ( Test-Path -LiteralPath $source ) {
+			Copy-Item -LiteralPath $source -Destination $packageRoot -Recurse -Force
+		}
+	}
 
 	$zip = Join-Path $dist ("seoistic-$Version.zip")
 	if (Test-Path -LiteralPath $zip) {

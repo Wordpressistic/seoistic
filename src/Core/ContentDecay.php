@@ -21,14 +21,21 @@ final class ContentDecay {
 	 * @return array<int, array{id:int, title:string, score:int, previous_score:int, post_modified:string, edit_url:string}>
 	 */
 	public static function flagged( int $months = self::DEFAULT_MONTHS, int $limit = self::DEFAULT_LIMIT ): array {
+		$cache_key = 'decay_' . md5( $months . '|' . $limit );
+		$cached    = wp_cache_get( $cache_key, 'seoistic_content' );
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
+
 		global $wpdb;
 
 		$public_types = get_post_types( array( 'public' => true ) );
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
 		$cutoff       = gmdate( 'Y-m-d H:i:s', strtotime( "-{$months} months" ) );
 
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
+		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- cross-table meta comparison has no WP_Query equivalent.
+			$wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the merged array argument is valid for wpdb::prepare(); the sniff cannot count spread arrays.
+				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below.
 				"SELECT p.ID, p.post_title, p.post_modified,
 					CAST(score.meta_value AS SIGNED) AS score,
 					CAST(prev.meta_value AS SIGNED) AS previous_score
@@ -39,8 +46,9 @@ final class ContentDecay {
 				   AND p.post_modified < %s
 				   AND CAST(score.meta_value AS SIGNED) < CAST(prev.meta_value AS SIGNED)
 				 ORDER BY (CAST(prev.meta_value AS SIGNED) - CAST(score.meta_value AS SIGNED)) DESC
-				 LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				array_merge( $public_types, array( $cutoff, $limit ) )
+				 LIMIT %d",
+				// phpcs:enable
+				...array_merge( $public_types, array( $cutoff, $limit ) )
 			),
 			ARRAY_A
 		);
@@ -56,6 +64,7 @@ final class ContentDecay {
 				'edit_url'       => (string) get_edit_post_link( (int) $row['ID'], 'raw' ),
 			);
 		}
+		wp_cache_set( $cache_key, $flagged, 'seoistic_content', 5 * MINUTE_IN_SECONDS );
 		return $flagged;
 	}
 }

@@ -214,7 +214,8 @@ final class SchemaBuilderPage {
 	}
 
 	private function notice(): void {
-		$message = isset( $_GET['message'] ) ? sanitize_key( wp_unslash( $_GET['message'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only display of an admin-redirect status slug; no form is processed.
+		$message = isset( $_GET['message'] ) ? sanitize_key( wp_unslash( (string) $_GET['message'] ) ) : '';
 		if ( '' === $message ) {
 			return;
 		}
@@ -226,7 +227,8 @@ final class SchemaBuilderPage {
 		if ( isset( $messages[ $message ] ) ) {
 			printf( '<div class="notice notice-success is-dismissible seoistic-notice" data-aurora-toast="success" data-aurora-toast-message="%s"><p>%s</p></div>', esc_attr( $messages[ $message ] ), esc_html( $messages[ $message ] ) );
 		} elseif ( 'error' === $message || 'import-error' === $message ) {
-			$issues = isset( $_GET['issues'] ) ? json_decode( sanitize_text_field( wp_unslash( $_GET['issues'] ) ), true ) : array();
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only display of validation issues from an admin redirect.
+			$issues = isset( $_GET['issues'] ) ? json_decode( sanitize_text_field( wp_unslash( (string) $_GET['issues'] ) ), true ) : array();
 			echo '<div class="notice notice-error is-dismissible seoistic-notice" data-aurora-toast="error" data-aurora-toast-message="' . esc_attr__( 'Validation failed. Please correct the block and try again.', 'seoistic' ) . '"><p>' . esc_html__( 'Validation failed. Please correct the block and try again.', 'seoistic' ) . '</p>';
 			if ( is_array( $issues ) && array() !== $issues ) {
 				echo '<ul>';
@@ -288,6 +290,7 @@ final class SchemaBuilderPage {
 		if ( ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'seoistic_schema_blocks_transfer' ) ) {
 			wp_die( esc_html__( 'Permission denied.', 'seoistic' ) );
 		}
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- tmp_name is a server-generated upload path, validated with is_uploaded_file() before any read.
 		$path = (string) ( $_FILES['json']['tmp_name'] ?? '' );
 		$decoded = '' !== $path && is_uploaded_file( $path ) ? json_decode( (string) file_get_contents( $path ), true ) : null; // phpcs:ignore WordPress.WP.AlternativeFunctions
 		$blocks = is_array( $decoded ) && is_array( $decoded['blocks'] ?? null ) ? $decoded['blocks'] : array();

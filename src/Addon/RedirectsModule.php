@@ -50,7 +50,7 @@ final class RedirectsModule extends AbstractModule {
 	}
 
 	private function current_path(): string {
-		$path = (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH );
+		$path = (string) wp_parse_url( sanitize_text_field( wp_unslash( (string) ( $_SERVER['REQUEST_URI'] ?? '' ) ) ), PHP_URL_PATH );
 		// On subdirectory installs (site served from /blog/), stored sources are
 		// site-relative — strip the install prefix before matching.
 		$base = (string) wp_parse_url( (string) home_url(), PHP_URL_PATH );
@@ -70,7 +70,7 @@ final class RedirectsModule extends AbstractModule {
 		// serve them from a cache invalidated whenever a rule is saved.
 		$rows = get_transient( 'seoistic_redirect_rules' );
 		if ( ! is_array( $rows ) ) {
-			$rows = $wpdb->get_results( "SELECT * FROM {$this->table()} WHERE enabled = 1", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE enabled = 1', $this->table() ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- plugin-owned custom table (no WordPress API); cached via the transient above/below.
 			set_transient( 'seoistic_redirect_rules', is_array( $rows ) ? $rows : array(), HOUR_IN_SECONDS );
 		}
 
@@ -109,10 +109,11 @@ final class RedirectsModule extends AbstractModule {
 		$url = mb_substr( $this->current_path(), 0, 255 );
 		$ref = isset( $_SERVER['HTTP_REFERER'] ) ? esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) ) : '';
 		$now = current_time( 'mysql', true );
-		$wpdb->query( // phpcs:ignore WordPress.DB
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- plugin-owned custom table; no WordPress API exists for it.
 			$wpdb->prepare(
-				"INSERT INTO {$this->log_table()} (url, referer, hits, last_seen) VALUES (%s, %s, 1, %s)
-				 ON DUPLICATE KEY UPDATE hits = hits + 1, last_seen = %s, referer = %s",
+				'INSERT INTO %i (url, referer, hits, last_seen) VALUES (%s, %s, 1, %s)
+				 ON DUPLICATE KEY UPDATE hits = hits + 1, last_seen = %s, referer = %s',
+				$this->log_table(),
 				$url,
 				$ref,
 				$now,
@@ -120,6 +121,7 @@ final class RedirectsModule extends AbstractModule {
 				$ref
 			)
 		);
+		wp_cache_delete( 'seoistic_404_stats', 'seoistic_redirects' );
 	}
 
 	public function menu(): void {
@@ -143,7 +145,7 @@ final class RedirectsModule extends AbstractModule {
 			<tbody>
 			<?php foreach ( (array) $rows as $row ) : ?>
 				<tr>
-					<td><code><?php echo esc_html( $row['source'] ); ?></code><?php echo ! empty( $row['is_regex'] ) ? ' ' . View::badge( __( 'Regex', 'seoistic' ), 'neutral' ) : ''; ?></td>
+					<td><code><?php echo esc_html( $row['source'] ); ?></code><?php echo ! empty( $row['is_regex'] ) ? ' ' . View::badge( __( 'Regex', 'seoistic' ), 'neutral' ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally. ?></td>
 					<td><?php echo esc_html( $row['target'] ); ?></td>
 					<td><?php echo (int) $row['code']; ?></td>
 					<td><?php echo (int) $row['hits']; ?></td>
@@ -233,9 +235,9 @@ final class RedirectsModule extends AbstractModule {
 		$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			$this->table(),
 			array(
-				'source'     => sanitize_text_field( wp_unslash( $_POST['source'] ?? '' ) ),
-				'target'     => sanitize_text_field( wp_unslash( $_POST['target'] ?? '' ) ),
-				'code'       => (int) ( $_POST['code'] ?? 301 ),
+				'source'     => sanitize_text_field( wp_unslash( (string) ( $_POST['source'] ?? '' ) ) ),
+				'target'     => sanitize_text_field( wp_unslash( (string) ( $_POST['target'] ?? '' ) ) ),
+				'code'       => (int) sanitize_text_field( wp_unslash( (string) ( $_POST['code'] ?? '301' ) ) ),
 				'is_regex'   => isset( $_POST['is_regex'] ) ? 1 : 0,
 				'enabled'    => 1,
 				'created_at' => current_time( 'mysql', true ),
@@ -284,8 +286,9 @@ final class RedirectsModule extends AbstractModule {
 		}
 
 		$count = 0;
-		if ( ! empty( $_FILES['csv']['tmp_name'] ) && is_uploaded_file( $_FILES['csv']['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
-			$handle = fopen( $_FILES['csv']['tmp_name'], 'r' ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- tmp_name is a server-generated upload path, validated with is_uploaded_file() before any read.
+		if ( ! empty( $_FILES['csv']['tmp_name'] ) && is_uploaded_file( $_FILES['csv']['tmp_name'] ) ) {
+			$handle = fopen( (string) $_FILES['csv']['tmp_name'], 'r' ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 			if ( $handle ) {
 				global $wpdb;
 				$header = fgetcsv( $handle );
@@ -308,7 +311,7 @@ final class RedirectsModule extends AbstractModule {
 						$target = rtrim( $dest_domain, '/' ) . '/' . ltrim( $new_url, '/' );
 					}
 
-					$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+					$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- plugin-owned custom table; no WordPress API exists for it.
 						$this->table(),
 						array(
 							'source'     => $source,
@@ -324,6 +327,7 @@ final class RedirectsModule extends AbstractModule {
 				fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 			}
 		}
+		// phpcs:enable
 
 		DashboardMetrics::flush();
 		$this->flush_rule_cache();

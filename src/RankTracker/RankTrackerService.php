@@ -193,12 +193,14 @@ final class RankTrackerService {
 	public function due_keywords( string $source ): array {
 		global $wpdb;
 		$repository = $this->repository;
-		$rows = $wpdb->get_results(
+		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- plugin-owned custom tables (no WordPress API); freshness matters: this selects the pending cron batch, so it must not be served from a cache.
 			$wpdb->prepare(
-				'SELECT k.* FROM ' . $repository->keyword_table() . ' k
-				LEFT JOIN ' . $repository->position_table() . ' p
+				'SELECT k.* FROM %i k
+				LEFT JOIN %i p
 					ON p.keyword_id = k.id AND DATE(p.checked_at) = %s
 				WHERE k.source = %s AND p.id IS NULL ORDER BY k.id ASC',
+				$repository->keyword_table(),
+				$repository->position_table(),
 				current_time( 'Y-m-d', true ),
 				$source
 			),
@@ -256,9 +258,11 @@ final class RankTrackerService {
 			update_option( self::STATE_OPTION, array( 'last_report_at' => '', 'last_report_status' => __( 'No valid report recipient is configured.', 'seoistic' ) ), false );
 			return false;
 		}
+		/* translators: %s: brand name. */
+		$subject = sprintf( __( '%s — SEO Rank Report', 'seoistic' ), $settings['brand_name'] );
 		$sent = wp_mail(
 			$recipient,
-			sprintf( __( '%s — SEO Rank Report', 'seoistic' ), $settings['brand_name'] ),
+			$subject,
 			( new RankTrackerReport( $this->table_rows(), $settings ) )->html( false ),
 			array( 'Content-Type: text/html; charset=UTF-8' )
 		);

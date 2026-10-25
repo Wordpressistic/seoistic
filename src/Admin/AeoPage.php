@@ -153,6 +153,7 @@ final class AeoPage {
 		echo '<div class="seoistic-field"><label class="seoistic-field-label" for="seoistic-aeo-post">' . esc_html__( 'Content', 'seoistic' ) . '</label><select id="seoistic-aeo-post" data-seoistic-audit-post>';
 		foreach ( $recent as $post ) {
 			$score = get_post_meta( (int) $post->ID, AeoAuditService::META_SCORE, true );
+			/* translators: %d: AEO audit score. */
 			$label = get_the_title( $post ) . ( '' !== (string) $score ? ' — ' . sprintf( __( 'AEO %d/100', 'seoistic' ), (int) $score ) : '' );
 			echo '<option value="' . esc_attr( (string) $post->ID ) . '">' . esc_html( $label ) . '</option>';
 		}

@@ -166,7 +166,7 @@ final class IndexisticPage {
 			echo '<td><code>' . esc_html( (string) $row['url'] ) . '</code></td>';
 			echo '<td>' . esc_html( ucfirst( (string) $row['engine'] ) ) . '</td>';
 			echo '<td>' . esc_html( (string) $row['action'] ) . '</td>';
-			echo '<td>' . View::badge( ucfirst( (string) $row['status'] ), 'success' === $row['status'] ? 'good' : 'bad' ) . '</td>';
+			echo '<td>' . View::badge( ucfirst( (string) $row['status'] ), 'success' === $row['status'] ? 'good' : 'bad' ) . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- View::badge() escapes text and class internally.
 			echo '<td>' . ( ! empty( $row['is_manual'] ) ? esc_html__( 'Manual', 'seoistic' ) : esc_html__( 'Automatic', 'seoistic' ) ) . '</td>';
 			echo '</tr>';
 		}
@@ -194,13 +194,15 @@ final class IndexisticPage {
 		if ( ! empty( $_POST['clear_google_key'] ) ) {
 			IndexisticSettings::clear_google_key();
 		} else {
-			$json = sanitize_textarea_field( wp_unslash( $_POST['google_key_json'] ?? '' ) );
-			if ( isset( $_FILES['google_key_file'] ) && ! empty( $_FILES['google_key_file']['tmp_name'] ) && is_uploaded_file( $_FILES['google_key_file']['tmp_name'] ) ) { // phpcs:ignore WordPress.Security.ValidationSanitization
-				$uploaded = file_get_contents( $_FILES['google_key_file']['tmp_name'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+			$json = sanitize_textarea_field( wp_unslash( (string) ( $_POST['google_key_json'] ?? '' ) ) );
+			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- tmp_name is a server-generated upload path, validated with is_uploaded_file() before any read.
+			if ( isset( $_FILES['google_key_file'] ) && ! empty( $_FILES['google_key_file']['tmp_name'] ) && is_uploaded_file( $_FILES['google_key_file']['tmp_name'] ) ) {
+				$uploaded = file_get_contents( (string) $_FILES['google_key_file']['tmp_name'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 				if ( is_string( $uploaded ) && '' !== $uploaded ) {
 					$json = $uploaded;
 				}
 			}
+			// phpcs:enable
 			if ( '' !== $json && false === strpos( $json, '•' ) ) {
 				$decoded = json_decode( $json, true );
 				if ( is_array( $decoded ) && ! empty( $decoded['client_email'] ) && ! empty( $decoded['private_key'] ) ) {

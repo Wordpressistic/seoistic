@@ -284,7 +284,7 @@ final class UptimeMonitor {
 			return null;
 		}
 		$params = stream_context_get_params( $client );
-		fclose( $client );
+		fclose( $client ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- closes a raw SSL stream socket used for certificate inspection; WP_Filesystem has no stream-socket API.
 		$cert = $params['options']['ssl']['peer_certificate'] ?? null;
 		if ( ! $cert ) {
 			return null;
@@ -318,8 +318,17 @@ final class UptimeMonitor {
 				__( "%1\$s appears to be down. SEOistic will email you again when it recovers.", 'seoistic' ),
 				$label
 			);
-			$content = '<p><strong>' . esc_html__( 'Reason', 'seoistic' ) . ':</strong> ' . esc_html( '' !== $outcome['error'] ? $outcome['error'] : __( 'Unknown', 'seoistic' ) ) . '</p><p><strong>' . esc_html__( 'HTTP status', 'seoistic' ) . ':</strong> ' . esc_html( (string) (int) $outcome['code'] ) . '</p>';
+			$content = EmailReportTemplate::stat_cards( array(
+				array( 'label' => __( 'Status', 'seoistic' ), 'value' => __( 'DOWN', 'seoistic' ), 'tone' => 'bad' ),
+				array( 'label' => __( 'HTTP status', 'seoistic' ), 'value' => (string) (int) $outcome['code'], 'tone' => 'bad' ),
+				array(
+					'label' => __( 'Reason', 'seoistic' ),
+					'value' => '' !== $outcome['error'] ? $this->truncate( sanitize_text_field( (string) $outcome['error'] ), 40 ) : __( 'Unknown', 'seoistic' ),
+					'tone'  => 'warn',
+				),
+			) );
 			$button_label = __( 'Visit Monitored Website', 'seoistic' );
+			$tone         = 'bad';
 		} else {
 			/* translators: 1: monitor label, 2: site name. */
 			$subject = sprintf( __( '[%2$s] SEOISTIC Uptime: %1$s is back UP', 'seoistic' ), $label, get_bloginfo( 'name' ) );
@@ -328,8 +337,16 @@ final class UptimeMonitor {
 				__( '%1$s is responding normally again.', 'seoistic' ),
 				$label
 			);
-			$content = '<p><strong>' . esc_html__( 'Response time', 'seoistic' ) . ':</strong> ' . esc_html( (string) (int) $outcome['response_ms'] ) . ' ms</p>';
+			$content = EmailReportTemplate::stat_cards( array(
+				array( 'label' => __( 'Status', 'seoistic' ), 'value' => __( 'UP', 'seoistic' ), 'tone' => 'ok' ),
+				array(
+					'label' => __( 'Response time', 'seoistic' ),
+					'value' => (string) (int) $outcome['response_ms'] . ' ms',
+					'tone'  => (int) $outcome['response_ms'] < 800 ? 'ok' : 'warn',
+				),
+			) );
 			$button_label = __( 'Visit Monitored Website', 'seoistic' );
+			$tone         = 'ok';
 		}
 		$body = EmailReportTemplate::render(
 			$label,
@@ -337,7 +354,8 @@ final class UptimeMonitor {
 			$intro,
 			$content,
 			$button_label,
-			$url
+			$url,
+			array( 'tone' => $tone )
 		);
 		wp_mail( $to, $subject, $body, EmailReportTemplate::headers() );
 	}

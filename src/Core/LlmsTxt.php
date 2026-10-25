@@ -21,7 +21,7 @@ final class LlmsTxt {
 	}
 
 	public function maybe_output(): void {
-		$path = trim( (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH ), '/' );
+		$path = trim( (string) wp_parse_url( sanitize_text_field( wp_unslash( (string) ( $_SERVER['REQUEST_URI'] ?? '' ) ) ), PHP_URL_PATH ), '/' );
 		if ( 'llms.txt' !== $path ) {
 			return;
 		}

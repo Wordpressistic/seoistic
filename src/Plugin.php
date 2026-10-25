@@ -21,7 +21,8 @@ final class Plugin {
 	private function __construct() {}
 
 	public function boot(): void {
-		load_plugin_textdomain( 'seoistic', false, dirname( plugin_basename( SEOISTIC_FILE ) ) . '/languages' );
+		// Translations load automatically on WordPress 4.6+ for seoistic (the
+		// text domain matches the plugin slug), so no load_plugin_textdomain().
 
 		if ( is_admin() ) {
 			Install\Tables::maybe_upgrade();

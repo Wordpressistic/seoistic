@@ -32,7 +32,8 @@ final class BusinessAutomatorPage {
 	}
 
 	public function enqueue_assets(): void {
-		if (!isset($_GET['page']) || 'seoistic-business-automator' !== $_GET['page']) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only asset gating on an admin screen slug; no form is processed.
+		if (!isset($_GET['page']) || 'seoistic-business-automator' !== sanitize_key(wp_unslash((string) $_GET['page']))) {
 			return;
 		}
 		wp_enqueue_style('seoistic-admin');
@@ -61,7 +62,8 @@ final class BusinessAutomatorPage {
 			wp_die(esc_html__('Unauthorized', 'seoistic'));
 		}
 
-		$tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'recipes';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only tab slug for display; sanitized and whitelisted below.
+		$tab = isset($_GET['tab']) ? sanitize_key(wp_unslash((string) $_GET['tab'])) : 'recipes';
 		$tabs = array(
 			'recipes' => __('Recipes', 'seoistic'),
 			'history' => __('Run history', 'seoistic'),

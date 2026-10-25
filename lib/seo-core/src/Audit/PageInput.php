@@ -45,6 +45,7 @@ final class PageInput
      */
     private static function normalize(string $html): string
     {
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags -- seo-core is a WordPress-independent library by design; wp_strip_all_tags() cannot be used here.
         return trim((string) preg_replace('/\s+/', ' ', strip_tags($html)));
     }
 }

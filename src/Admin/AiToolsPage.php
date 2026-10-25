@@ -71,18 +71,22 @@ final class AiToolsPage {
 	}
 
 	private function generator_card( string $icon, string $title, string $desc, string $type, int $credits = 0 ): void {
+		/* translators: %d: number of AI credits this tool costs. */
+		$credit_note = sprintf( _n( '%d credit', '%d credits', $credits, 'seoistic' ), $credits );
 		echo '<div class="seoistic-tool-card">';
 		echo '<div class="seoistic-tool-head"><div class="seoistic-card-icon"><span class="dashicons dashicons-' . esc_attr( $icon ) . '"></span></div><strong>' . esc_html( $title ) . '</strong></div>';
 		echo '<p>' . esc_html( $desc ) . '</p>';
-		echo '<button type="button" title="' . esc_attr( sprintf( _n( '%d credit', '%d credits', $credits, 'seoistic' ), $credits ) ) . '" class="seoistic-btn seoistic-btn-primary" data-seoistic-generate="' . esc_attr( $type ) . '" ' . disabled( $this->ai_ready(), false, false ) . '><span class="dashicons dashicons-superhero"></span> ' . esc_html__( 'Generate', 'seoistic' ) . '</button>';
+		echo '<button type="button" title="' . esc_attr( $credit_note ) . '" class="seoistic-btn seoistic-btn-primary" data-seoistic-generate="' . esc_attr( $type ) . '" ' . disabled( $this->ai_ready(), false, false ) . '><span class="dashicons dashicons-superhero"></span> ' . esc_html__( 'Generate', 'seoistic' ) . '</button>';
 		echo '</div>';
 	}
 
 	private function bulk_card( string $icon, string $title, string $desc, string $tool, int $credits = 0 ): void {
+		/* translators: %d: number of AI credits each page costs in a bulk run. */
+		$credit_note = sprintf( _n( '%d credit per page', '%d credits per page', $credits, 'seoistic' ), $credits );
 		echo '<div class="seoistic-tool-card">';
 		echo '<div class="seoistic-tool-head"><div class="seoistic-card-icon"><span class="dashicons dashicons-' . esc_attr( $icon ) . '"></span></div><strong>' . esc_html( $title ) . '</strong></div>';
 		echo '<p>' . esc_html( $desc ) . '</p>';
-		echo '<button type="button" title="' . esc_attr( sprintf( _n( '%d credit per page', '%d credits per page', $credits, 'seoistic' ), $credits ) ) . '" class="seoistic-btn seoistic-btn-primary" data-seoistic-bulk="' . esc_attr( $tool ) . '" ' . disabled( $this->ai_ready(), false, false ) . '><span class="dashicons dashicons-superhero"></span> ' . esc_html__( 'Run', 'seoistic' ) . '</button>';
+		echo '<button type="button" title="' . esc_attr( $credit_note ) . '" class="seoistic-btn seoistic-btn-primary" data-seoistic-bulk="' . esc_attr( $tool ) . '" ' . disabled( $this->ai_ready(), false, false ) . '><span class="dashicons dashicons-superhero"></span> ' . esc_html__( 'Run', 'seoistic' ) . '</button>';
 		echo '<div class="seoistic-tool-result"></div>';
 		echo '</div>';
 	}

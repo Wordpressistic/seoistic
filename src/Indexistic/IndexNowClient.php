@@ -23,7 +23,7 @@ final class IndexNowClient {
 	 * so search engines can verify the submitter owns the domain.
 	 */
 	public function maybe_serve_key_file(): void {
-		$path = trim( (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH ), '/' );
+		$path = trim( (string) wp_parse_url( sanitize_text_field( wp_unslash( (string) ( $_SERVER['REQUEST_URI'] ?? '' ) ) ), PHP_URL_PATH ), '/' );
 		$key  = IndexisticSettings::indexnow_key();
 		if ( '' === $key || $path !== $key . '.txt' ) {
 			return;

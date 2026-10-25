@@ -3,9 +3,15 @@ set -euo pipefail
 
 # Build a deterministic SEOistic plugin ZIP suitable for distribution and
 # WPistic package registration. Usage:
-#   ./scripts/build-release.sh 1.4.0
+#   ./scripts/build-release.sh 1.7.3
 
-VERSION=${1:-1.4.0}
+VERSION=${1:-1.7.3}
+# Only accept strict semver (major.minor.patch) so the version never injects
+# shell metacharacters into the zip/sha256sum invocations below.
+if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+	echo "Version must look like 1.2.3 (digits and dots only): got '$VERSION'" >&2
+	exit 1
+fi
 ROOT_DIR=$(pwd)
 WORKDIR=$(mktemp -d)
 DIST_DIR="$ROOT_DIR/dist"
@@ -14,14 +20,35 @@ PKG_NAME="seoistic-${VERSION}.zip"
 PKG_PATH="$OUT_DIR/$PKG_NAME"
 SHA_PATH="$PKG_PATH.sha256"
 
+# Runtime allowlist — identical to the CI "runtime-only distribution" step in
+# .github/workflows/php.yml. Build tooling (scripts/, tests/, docs/) must never
+# ship inside the plugin zip: WordPress Plugin Check flags application files.
+RUNTIME_ENTRIES=(
+	assets
+	lib
+	src
+	knowledge
+	languages
+	seoistic.php
+	uninstall.php
+	LICENSE
+	readme.txt
+	CHANGELOG.md
+	README.md
+	composer.json
+)
+
 echo "Building SEOistic $VERSION"
 
 rm -rf "$WORKDIR"
 mkdir -p "$WORKDIR/seoistic"
 mkdir -p "$OUT_DIR"
 
-# Include runtime files
-rsync -a --exclude '.git' --exclude '.github' --exclude 'tests' --exclude 'node_modules' --exclude 'vendor/*/tests' --exclude 'dist' --exclude '.env' ./ "$WORKDIR/seoistic/"
+for entry in "${RUNTIME_ENTRIES[@]}"; do
+	if [ -e "$entry" ]; then
+		rsync -a "$entry" "$WORKDIR/seoistic/"
+	fi
+done
 
 # Ensure vendor will be installed by CI prior to running this script. If a
 # vendor directory exists, include it; otherwise the package will expect the

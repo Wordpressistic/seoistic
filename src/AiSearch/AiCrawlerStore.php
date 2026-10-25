@@ -70,7 +70,7 @@ final class AiCrawlerStore {
 		if ( null === $bot || is_admin() ) {
 			return;
 		}
-		$this->record( $bot, home_url( (string) ( $_SERVER['REQUEST_URI'] ?? '/' ) ) );
+		$this->record( $bot, home_url( sanitize_text_field( wp_unslash( (string) ( $_SERVER['REQUEST_URI'] ?? '/' ) ) ) ) );
 	}
 
 	/**
@@ -148,7 +148,7 @@ final class AiCrawlerStore {
 	}
 
 	public function bot_from_user_agent( ?string $user_agent = null ): ?string {
-		$user_agent = strtolower( (string) ( $user_agent ?? ( $_SERVER['HTTP_USER_AGENT'] ?? '' ) ) );
+		$user_agent = strtolower( sanitize_text_field( (string) ( $user_agent ?? wp_unslash( (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ) ) ) ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized by sanitize_text_field() in the same expression.
 		foreach ( self::BOTS as $needle => $bot ) {
 			if ( false !== strpos( $user_agent, $needle ) ) {
 				return $bot;
