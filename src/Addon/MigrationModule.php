@@ -283,15 +283,17 @@ final class MigrationModule extends AbstractModule {
 			)
 		);
 
+		$batch_args = array_merge( $meta_keys, array( self::BATCH_SIZE, $offset ) );
 		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the merged array argument is valid for wpdb::prepare(); the sniff cannot count spread arguments.
 		$ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- paginated migration batches must read live postmeta; no WP API equivalent.
 			$wpdb->prepare(
 				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread args below.
 				"SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ({$placeholders}) AND meta_value <> '' ORDER BY post_id ASC LIMIT %d OFFSET %d",
 				// phpcs:enable
-				...array_merge( $meta_keys, array( self::BATCH_SIZE, $offset ) )
+				...$batch_args
 			)
 		);
+		// phpcs:enable
 
 		return array( 'ids' => array_map( 'intval', $ids ), 'total' => $total );
 	}

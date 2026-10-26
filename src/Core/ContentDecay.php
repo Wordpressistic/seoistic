@@ -32,9 +32,11 @@ final class ContentDecay {
 		$public_types = get_post_types( array( 'public' => true ) );
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
 		$cutoff       = gmdate( 'Y-m-d H:i:s', strtotime( "-{$months} months" ) );
+		$prepare_args = array_merge( $public_types, array( $cutoff, $limit ) );
 
+		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the merged array argument is valid for wpdb::prepare(); the sniff cannot count spread arrays.
 		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- cross-table meta comparison has no WP_Query equivalent.
-			$wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the merged array argument is valid for wpdb::prepare(); the sniff cannot count spread arrays.
+			$wpdb->prepare(
 				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below.
 				"SELECT p.ID, p.post_title, p.post_modified,
 					CAST(score.meta_value AS SIGNED) AS score,
@@ -48,10 +50,11 @@ final class ContentDecay {
 				 ORDER BY (CAST(prev.meta_value AS SIGNED) - CAST(score.meta_value AS SIGNED)) DESC
 				 LIMIT %d",
 				// phpcs:enable
-				...array_merge( $public_types, array( $cutoff, $limit ) )
+				...$prepare_args
 			),
 			ARRAY_A
 		);
+		// phpcs:enable
 
 		$flagged = array();
 		foreach ( (array) $rows as $row ) {

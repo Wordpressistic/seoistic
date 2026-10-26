@@ -3,6 +3,18 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.4] - 2026-10-26
+
+### Fixed
+
+- **Hotfix**: hoisted all `...array_merge()` argument spreads into local
+  variables (`$prepare_args`, `$missing_meta_args`, `$low_score_args`,
+  `$batch_args`, `$scan_args`). On some PHP 8.3 builds, a `// phpcs:ignore`
+  or `// phpcs:disable` comment immediately preceding `...array_merge(...)`
+  was being mis-parsed as a named-argument label, causing a fatal
+  "Cannot use positional argument after named argument during unpacking"
+  in `ContentDecay::flagged()` on the Content Health admin screen.
+
 ## [1.7.3] - 2026-10-26
 
 ### Fixed — WordPress Plugin Check: 67 errors and 191 warnings resolved

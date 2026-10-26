@@ -4,7 +4,7 @@ Tags: seo, schema, sitemap, redirects, indexing
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.7.3
+Stable tag: 1.7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -112,6 +112,12 @@ screenshot-N.png convention before a .org submission.)
 
 See CHANGELOG.md in the plugin's source repository for the full history.
 Highlights for this release are below.
+
+= 1.7.4 =
+* Hotfix for PHP 8.3: hoisted all `...array_merge()` argument spreads into
+  local variables. A trailing `// phpcs:ignore` / `// phpcs:disable` comment
+  directly before `...array_merge(...)` could be mis-parsed as a named
+  argument on some PHP 8.3 builds, causing a fatal error on Content Health.
 
 = 1.7.3 =
 * WordPress Plugin Check: resolved all 67 errors and 191 warnings — output

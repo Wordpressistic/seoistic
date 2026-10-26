@@ -43,6 +43,7 @@ final class LinkGraph {
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
 		$limit        = (int) apply_filters( 'seoistic/orphan_scan_limit', 5000 );
 
+		$scan_args = array_merge( $public_types, array( $limit ) );
 		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- full-content link extraction has no WP API equivalent.
 			$wpdb->prepare(
 				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below.
@@ -50,7 +51,7 @@ final class LinkGraph {
 				 WHERE post_status = 'publish' AND post_type IN ({$placeholders})
 				 ORDER BY ID ASC LIMIT %d",
 				// phpcs:enable
-				...array_merge( $public_types, array( $limit ) )
+				...$scan_args
 			),
 			ARRAY_A
 		);

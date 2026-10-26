@@ -401,9 +401,10 @@ final class RestController {
 		if ( 'missing_meta' === $criteria ) {
 			$public_types = get_post_types( array( 'public' => true ) );
 			$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
+			$missing_meta_args   = array_merge( $public_types, array( $limit, $offset ) );
 			// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below; the sniff cannot count spread arguments.
 			$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_title' AND meta_value <> '' )", ...$public_types ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- bulk scan across post types/meta has no WP_Query equivalent; must stay fresh for paginated batches.
-			$ids   = $wpdb->get_col( $wpdb->prepare( "SELECT p.ID FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_title' AND meta_value <> '' ) ORDER BY p.ID ASC LIMIT %d OFFSET %d", ...array_merge( $public_types, array( $limit, $offset ) ) ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- bulk scan across post types/meta has no WP_Query equivalent; must stay fresh for paginated batches.
+			$ids   = $wpdb->get_col( $wpdb->prepare( "SELECT p.ID FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_title' AND meta_value <> '' ) ORDER BY p.ID ASC LIMIT %d OFFSET %d", ...$missing_meta_args ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- bulk scan across post types/meta has no WP_Query equivalent; must stay fresh for paginated batches.
 			// phpcs:enable
 			return array( 'ids' => array_map( 'intval', $ids ), 'total' => $total );
 		}
@@ -418,9 +419,10 @@ final class RestController {
 		// internal-link and AEO advisory reports.
 		$public_types = get_post_types( array( 'public' => true ) );
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
+		$low_score_args = array_merge( $public_types, array( $limit, $offset ) );
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below; the sniff cannot count spread arguments.
 		$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_score' AND CAST(meta_value AS UNSIGNED) >= 80 )", ...$public_types ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- score-filtered bulk scan has no WP_Query equivalent; must stay fresh for paginated batches.
-		$ids   = $wpdb->get_col( $wpdb->prepare( "SELECT p.ID FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_score' AND CAST(meta_value AS UNSIGNED) >= 80 ) ORDER BY p.ID ASC LIMIT %d OFFSET %d", ...array_merge( $public_types, array( $limit, $offset ) ) ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- score-filtered bulk scan has no WP_Query equivalent; must stay fresh for paginated batches.
+		$ids   = $wpdb->get_col( $wpdb->prepare( "SELECT p.ID FROM {$wpdb->posts} p WHERE p.post_status = 'publish' AND p.post_type IN ({$placeholders}) AND p.ID NOT IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seoistic_score' AND CAST(meta_value AS UNSIGNED) >= 80 ) ORDER BY p.ID ASC LIMIT %d OFFSET %d", ...$low_score_args ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- score-filtered bulk scan has no WP_Query equivalent; must stay fresh for paginated batches.
 		// phpcs:enable
 		return array( 'ids' => array_map( 'intval', $ids ), 'total' => $total );
 	}
