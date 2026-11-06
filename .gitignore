@@ -1,2 +1,7 @@
 .mimosa/
 dist/
+vendor/
+composer.lock
+composer.phar
+phpcs-report.txt
+phpcs.json

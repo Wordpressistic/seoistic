@@ -3,6 +3,33 @@
 All notable changes to SEOistic are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.5] - 2026-11-07
+
+### Fixed
+
+- **Content Health fatal error (root cause of 1.7.4's hotfix)**: PHP 8.1+
+  aborts argument unpacking with
+  `Cannot use positional argument after named argument during unpacking`
+  when a *mixed-key* array is spread into a call. `get_post_types()` returns
+  a **string-keyed** map (`'post'`, `'page'`, …); `array_merge()` preserves
+  those keys, so merging it with the query's integer-keyed cutoff/limit
+  values and spreading the result into `$wpdb->prepare()` always fataled.
+  1.7.4's hoisting fixed the wrong suspect (PHPCS comments cannot become
+  named-argument labels), so the crash survived. Every post-type list that
+  feeds a `prepare()` spread is now reindexed with `array_values()`:
+  `Core\ContentDecay::flagged()` (Content Health screen), `Core\LinkGraph`
+  (orphan scan), `Core\DashboardMetrics::snapshot()` (dashboard), and
+  `AI\RestController::candidate_ids()`/`handle_audit_report()` (bulk AI
+  tools + audit report). Verified against WP 6.4 `wpdb::prepare()`
+  semantics with an end-to-end reproduction: the page now renders and the
+  generated SQL matches the intended placeholders.
+- **Rank Tracker regression guard**: `RankTrackerRepository::history()`
+  embedded its row limit in a single-quoted SQL string, which PHP does not
+  interpolate — the literal `{$limit}` would have reached MySQL. The limit
+  is now interpolated from a range-clamped integer (double-quoted string).
+- `MigrationModule::batch_ids()` drops a redundant `array_merge()` and the
+  Rank Tracker history limit is clamped to 1–365.
+
 ## [1.7.4] - 2026-10-26
 
 ### Fixed

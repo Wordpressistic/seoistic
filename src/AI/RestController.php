@@ -400,6 +400,9 @@ final class RestController {
 
 		if ( 'missing_meta' === $criteria ) {
 			$public_types = get_post_types( array( 'public' => true ) );
+			// Reindex to a positional list: string keys would be unpacked as named
+			// arguments on PHP 8.1+ and fatal once int-keyed values follow.
+			$public_types = array_values( $public_types );
 			$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
 			$missing_meta_args   = array_merge( $public_types, array( $limit, $offset ) );
 			// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below; the sniff cannot count spread arguments.
@@ -418,6 +421,9 @@ final class RestController {
 		// 'low_score' — public posts scoring under 80 (or never scored), used for the
 		// internal-link and AEO advisory reports.
 		$public_types = get_post_types( array( 'public' => true ) );
+		// Same reindex requirement as the missing_meta branch above: string keys
+		// would be unpacked as named arguments and fatal on PHP 8.1+.
+		$public_types = array_values( $public_types );
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
 		$low_score_args = array_merge( $public_types, array( $limit, $offset ) );
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below; the sniff cannot count spread arguments.
@@ -644,6 +650,9 @@ final class RestController {
 	public function handle_audit_report( WP_REST_Request $request ) {
 		global $wpdb;
 		$public_types = get_post_types( array( 'public' => true ) );
+		// Reindex to a positional list: string keys would be unpacked as named
+		// arguments on PHP 8.1+ (see candidate_ids() for the same rationale).
+		$public_types = array_values( $public_types );
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
 
 		$worst = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- score-ordered join has no WP_Query equivalent; snapshot query for an on-demand report.

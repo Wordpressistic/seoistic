@@ -4,7 +4,7 @@ Tags: seo, schema, sitemap, redirects, indexing
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.7.4
+Stable tag: 1.7.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -112,6 +112,18 @@ screenshot-N.png convention before a .org submission.)
 
 See CHANGELOG.md in the plugin's source repository for the full history.
 Highlights for this release are below.
+
+= 1.7.5 =
+* Fixed the Content Health fatal error ("There has been a critical error on
+  this website") on PHP 8.1+. `get_post_types()` returns a string-keyed map;
+  merging it with the query's integer-keyed limit/cutoff values and unpacking
+  the result into `$wpdb->prepare()` raised "Cannot use positional argument
+  after named argument during unpacking". All type lists passed to prepare()
+  are now reindexed to positional arrays (Content Decay, orphan-page Link
+  Graph scan, dashboard metrics, AI bulk tools and the audit report).
+* Also corrected a regression in the Rank Tracker history query where the
+  row limit was embedded in a single-quoted string and sent to MySQL
+  literally.
 
 = 1.7.4 =
 * Hotfix for PHP 8.3: hoisted all `...array_merge()` argument spreads into

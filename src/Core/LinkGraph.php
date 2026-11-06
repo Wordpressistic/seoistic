@@ -41,15 +41,18 @@ final class LinkGraph {
 
 		$public_types = get_post_types( array( 'public' => true ) );
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
-		$limit        = (int) apply_filters( 'seoistic/orphan_scan_limit', 5000 );
+		$limit        = max( 1, (int) apply_filters( 'seoistic/orphan_scan_limit', 5000 ) );
 
-		$scan_args = array_merge( $public_types, array( $limit ) );
+		// get_post_types() returns a string-keyed map; unpacking it into prepare()
+		// would pass its keys as named arguments and fatal on PHP 8.1+ — reindex
+		// to a positional list.
+		$scan_args = array_values( $public_types );
 		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- full-content link extraction has no WP API equivalent.
 			$wpdb->prepare(
-				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below.
+				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args below; $limit is cast to int above.
 				"SELECT ID, post_title, post_content FROM {$wpdb->posts}
 				 WHERE post_status = 'publish' AND post_type IN ({$placeholders})
-				 ORDER BY ID ASC LIMIT %d",
+				 ORDER BY ID ASC LIMIT {$limit}",
 				// phpcs:enable
 				...$scan_args
 			),

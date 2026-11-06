@@ -32,6 +32,10 @@ final class DashboardMetrics {
 		global $wpdb;
 		$public_types = get_post_types( array( 'public' => true ) );
 		unset( $public_types['attachment'] ); // Media library items are not SEO pages.
+		// Reindex to a positional list before the prepare() spreads below: string
+		// keys would be unpacked as named arguments on PHP 8.1+ (and a post type
+		// literally named "query" would even shadow prepare()'s $query parameter).
+		$public_types = array_values( $public_types );
 		$placeholders = implode( ',', array_fill( 0, count( $public_types ), '%s' ) );
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $placeholders is a dynamically generated '%s,%s,…' list matching the spread $public_types args in each prepare; the sniff cannot count spread arguments.

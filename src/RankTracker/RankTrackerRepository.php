@@ -111,7 +111,7 @@ final class RankTrackerRepository {
 	 * @return array<int, array<string, mixed>>
 	 */
 	public function history( int $keyword_id, int $limit = 90 ): array {
-		$limit    = max( 1, min( 365, $limit ) );
+		$limit     = max( 1, min( 365, $limit ) );
 		$cache_key = 'history_' . $this->cache_generation() . '_' . $keyword_id . '_' . $limit;
 		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
 		if ( is_array( $cached ) ) {
@@ -121,10 +121,11 @@ final class RankTrackerRepository {
 		global $wpdb;
 		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- plugin-owned custom table; no WordPress API exists for it.
 			$wpdb->prepare(
-				'SELECT position, url, checked_at FROM %i WHERE keyword_id = %d ORDER BY checked_at DESC, id DESC LIMIT %d',
+				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $limit is clamped to an int range above.
+				"SELECT position, url, checked_at FROM %i WHERE keyword_id = %d ORDER BY checked_at DESC, id DESC LIMIT {$limit}",
+				// phpcs:enable
 				$this->position_table(),
-				$keyword_id,
-				$limit
+				$keyword_id
 			),
 			ARRAY_A
 		);
